@@ -8,19 +8,7 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     const canvasH = 320;
     const canvas = createCanvas(canvasW, canvasH);
     const ctx = canvas.getContext('2d');
-    const blurCtx = ctx as typeof ctx & { filter: string };
     const fontFamily = 'DakiWelcome';
-
-    const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
-        const radius = Math.min(r, w / 2, h / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.arcTo(x + w, y, x + w, y + h, radius);
-        ctx.arcTo(x + w, y + h, x, y + h, radius);
-        ctx.arcTo(x, y + h, x, y, radius);
-        ctx.arcTo(x, y, x + w, y, radius);
-        ctx.closePath();
-    };
 
     // Try to register a bundled font if present to avoid missing-glyph squares
     try {
@@ -40,140 +28,117 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
         console.error('[WELCOME] Error checking/registering font', e);
     }
 
-    // Background: guild icon blurred or subtle gradient
-    const guildIconUrl = guild.iconURL({ extension: 'png', size: 1024 });
-    if (guildIconUrl) {
-        try {
-            const background = await loadImage(guildIconUrl);
-            blurCtx.filter = 'blur(28px)';
-            ctx.drawImage(background, 0, 0, canvasW, canvasH);
-            blurCtx.filter = 'none';
-        } catch {
-            const g = ctx.createLinearGradient(0, 0, canvasW, canvasH);
-            g.addColorStop(0, '#10151f');
-            g.addColorStop(1, '#151a24');
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, canvasW, canvasH);
-        }
-    } else {
-        const g = ctx.createLinearGradient(0, 0, canvasW, canvasH);
-        g.addColorStop(0, '#10151f');
-        g.addColorStop(1, '#151a24');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, canvasW, canvasH);
+    // 1. Solid Off-White Background
+    ctx.fillStyle = '#F4F0EB';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    // 2. Brutalist Grid Pattern
+    ctx.strokeStyle = '#D1CDC1';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < canvasW; i += 40) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvasH); ctx.stroke();
+    }
+    for (let j = 0; j < canvasH; j += 40) {
+        ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvasW, j); ctx.stroke();
     }
 
-    // Premium overlay
-    const overlay = ctx.createLinearGradient(0, 0, canvasW, canvasH);
-    overlay.addColorStop(0, 'rgba(8, 10, 16, 0.55)');
-    overlay.addColorStop(0.5, 'rgba(8, 10, 16, 0.66)');
-    overlay.addColorStop(1, 'rgba(8, 10, 16, 0.72)');
-    ctx.fillStyle = overlay;
-    ctx.fillRect(0, 0, canvasW, canvasH);
+    // 3. Thick Black Outer Border
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 12;
+    ctx.strokeRect(6, 6, canvasW - 12, canvasH - 12);
 
-    const glow = ctx.createRadialGradient(500, 120, 12, 500, 120, 320);
-    glow.addColorStop(0, 'rgba(115, 179, 255, 0.20)');
-    glow.addColorStop(0.35, 'rgba(115, 179, 255, 0.08)');
-    glow.addColorStop(1, 'rgba(115, 179, 255, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, canvasW, canvasH);
+    // 4. Top Header Bar
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(6, 6, canvasW - 12, 50);
 
-    // Card area
-    const padding = 34;
-    const cardX = padding;
-    const cardY = padding;
-    const cardW = canvasW - padding * 2;
-    const cardH = canvasH - padding * 2;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `800 24px "${fontFamily}", sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('ENTRY LOG_ // DAKI SYSTEM', 26, 31);
 
-    // Rounded rect panel with glass effect
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.42)';
-    ctx.shadowBlur = 30;
-    ctx.shadowOffsetY = 14;
-    roundRect(cardX, cardY, cardW, cardH, 26);
-    const panel = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
-    panel.addColorStop(0, 'rgba(13, 17, 26, 0.84)');
-    panel.addColorStop(0.5, 'rgba(11, 15, 24, 0.84)');
-    panel.addColorStop(1, 'rgba(9, 12, 20, 0.90)');
-    ctx.fillStyle = panel;
-    ctx.fill();
-    ctx.restore();
+    // Date/Time in header
+    const dateStr = new Date().toISOString().split('T')[0];
+    ctx.textAlign = 'right';
+    ctx.fillText(`DATE: ${dateStr}`, canvasW - 30, 31);
 
-    // Soft border
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // 5. Avatar Section
+    const avatarSize = 180;
+    const avatarX = 50;
+    const avatarY = 95;
 
-    // Accent strip
-    const accent = ctx.createLinearGradient(cardX + 80, cardY, cardX + cardW - 80, cardY);
-    accent.addColorStop(0, 'rgba(59, 130, 246, 0)');
-    accent.addColorStop(0.5, 'rgba(99, 179, 255, 0.95)');
-    accent.addColorStop(1, 'rgba(59, 130, 246, 0)');
-    ctx.fillStyle = accent;
-    roundRect(cardX + 78, cardY + 18, cardW - 156, 4, 999);
-    ctx.fill();
+    // Avatar Offset Shadow
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(avatarX + 12, avatarY + 12, avatarSize, avatarSize);
 
-    // Avatar centered
-    const avatarSize = 126;
-    const avatarX = canvasW / 2 - avatarSize / 2;
-    const avatarY = cardY + 34;
     try {
         const avatar = await loadImage(user.displayAvatarURL({ extension: 'png', size: 256 }));
-        // circular mask
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
         ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-        ctx.restore();
-        // layered ring
-        ctx.beginPath();
-        ctx.lineWidth = 9;
-        ctx.strokeStyle = 'rgba(255,255,255,0.80)';
-        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#5b8cff';
-        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 3, 0, Math.PI * 2);
-        ctx.stroke();
     } catch (e) {
-        // ignore avatar errors
+        // Fallback color if avatar fails
+        ctx.fillStyle = '#FF3366';
+        ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
     }
 
-    // Text area centered
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#eef2ff';
+    // Avatar Border
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#000000';
+    ctx.strokeRect(avatarX, avatarY, avatarSize, avatarSize);
 
-    const title = '¡Bienvenido/a al servidor!';
-    ctx.font = `800 34px "${fontFamily}", sans-serif`;
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(14, 20, 34, 0.95)';
-    ctx.strokeText(title, canvasW / 2, 232);
-    ctx.fillStyle = '#ff5d5d';
-    ctx.fillText(title, canvasW / 2, 232);
+    // 6. Typography / Welcome Message
+    const textX = avatarX + avatarSize + 45;
+    
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#000000';
+    ctx.font = `900 52px "${fontFamily}", sans-serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText('¡BIENVENIDO AL', textX, 90);
+    ctx.fillText('SERVIDOR DE DAKI!', textX, 145);
 
-    const username = user.tag;
-    ctx.font = `700 26px "${fontFamily}", sans-serif`;
-    ctx.fillStyle = '#d7dbe7';
-    ctx.strokeStyle = 'rgba(14, 20, 34, 0.90)';
-    ctx.strokeText(username, canvasW / 2, 268);
-    ctx.fillText(username, canvasW / 2, 268);
+    // Subtitle
+    ctx.font = `700 24px "${fontFamily}", sans-serif`;
+    ctx.fillStyle = '#4A4A4A';
+    ctx.fillText(`MEMBER ID: ${user.id}`, textX, 210);
 
-    const subtitle = `Te damos la bienvenida a ${guild.name}`;
-    ctx.font = `700 18px "${fontFamily}", sans-serif`;
-    ctx.fillStyle = '#f4f7fb';
-    ctx.strokeStyle = 'rgba(14, 20, 34, 0.85)';
-    ctx.strokeText(subtitle, canvasW / 2, 296);
-    ctx.fillText(subtitle, canvasW / 2, 296);
+    // Username Box
+    ctx.font = `800 28px "${fontFamily}", sans-serif`;
+    const tagToDisplay = `@${user.username}`;
+    let usernameW = ctx.measureText(tagToDisplay).width + 40;
+    
+    // Check max width for username box
+    const maxBoxW = canvasW - textX - 160; 
+    if (usernameW > maxBoxW) usernameW = maxBoxW;
 
-    // Small bottom accent dots
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = '#FF3366'; // Bold pink/red accent
+    ctx.fillRect(textX, 245, usernameW, 50);
+    
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(textX, 245, usernameW, 50);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textBaseline = 'middle';
+    
+    // Simple clipping for text if too long
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(canvasW / 2 - 74, 299, 2.4, 0, Math.PI * 2);
-    ctx.arc(canvasW / 2 + 74, 299, 2.4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.rect(textX, 245, usernameW, 50);
+    ctx.clip();
+    ctx.fillText(tagToDisplay, textX + 20, 270);
+    ctx.restore();
 
-    return new AttachmentBuilder(canvas.toBuffer(), { name: 'welcome-image.png' });
+    // 7. Decorative Barcode
+    const barcodeX = canvasW - 130;
+    const barcodeY = 90;
+    ctx.fillStyle = '#000000';
+    // Random-looking widths
+    const bars = [6, 3, 8, 4, 2, 7, 12, 3, 5, 8, 2, 3, 9, 4, 6];
+    let curX = barcodeX;
+    for (const bw of bars) {
+        if (curX + bw > canvasW - 20) break; // stay inside border
+        ctx.fillRect(curX, barcodeY, bw, 185);
+        curX += bw + 5;
+    }
+
+    return new AttachmentBuilder(canvas.toBuffer(), { name: 'daki-welcome.png' });
 }
