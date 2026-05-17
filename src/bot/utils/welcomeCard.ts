@@ -2,75 +2,123 @@ import { AttachmentBuilder, Guild, User } from 'discord.js';
 import { createCanvas, loadImage } from 'canvas';
 
 export async function createWelcomeCard(guild: Guild, user: User, displayName: string) {
-    const canvas = createCanvas(900, 300);
+    const canvasW = 1000;
+    const canvasH = 320;
+    const canvas = createCanvas(canvasW, canvasH);
     const ctx = canvas.getContext('2d');
     const blurCtx = ctx as typeof ctx & { filter: string };
 
+    // Background: guild icon blurred or subtle gradient
     const guildIconUrl = guild.iconURL({ extension: 'png', size: 1024 });
     if (guildIconUrl) {
-        const background = await loadImage(guildIconUrl);
-        blurCtx.filter = 'blur(20px)';
-        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-        blurCtx.filter = 'none';
+        try {
+            const background = await loadImage(guildIconUrl);
+            blurCtx.filter = 'blur(18px)';
+            ctx.drawImage(background, 0, 0, canvasW, canvasH);
+            blurCtx.filter = 'none';
+        } catch {
+            const g = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+            g.addColorStop(0, '#0f1724');
+            g.addColorStop(1, '#111827');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, canvasW, canvasH);
+        }
     } else {
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        gradient.addColorStop(0, '#111827');
-        gradient.addColorStop(1, '#1f2937');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const g = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+        g.addColorStop(0, '#0f1724');
+        g.addColorStop(1, '#111827');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, canvasW, canvasH);
     }
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Dim overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, canvasW, canvasH);
 
-    const cardX = 30;
-    const cardY = 30;
-    const cardW = canvas.width - 60;
-    const cardH = canvas.height - 60;
+    // Card area
+    const padding = 34;
+    const cardX = padding;
+    const cardY = padding;
+    const cardW = canvasW - padding * 2;
+    const cardH = canvasH - padding * 2;
 
-    ctx.fillStyle = 'rgba(20, 20, 26, 0.78)';
+    // Rounded rect
+    const radius = 22;
+    ctx.fillStyle = 'rgba(17, 24, 39, 0.62)';
     ctx.beginPath();
-    ctx.roundRect(cardX, cardY, cardW, cardH, 28);
+    ctx.moveTo(cardX + radius, cardY);
+    ctx.arcTo(cardX + cardW, cardY, cardX + cardW, cardY + cardH, radius);
+    ctx.arcTo(cardX + cardW, cardY + cardH, cardX, cardY + cardH, radius);
+    ctx.arcTo(cardX, cardY + cardH, cardX, cardY, radius);
+    ctx.arcTo(cardX, cardY, cardX + cardW, cardY, radius);
+    ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 2;
+    // Soft border
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(170, 150, 78, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
+    // Avatar
+    const avatarX = cardX + 34;
+    const avatarY = cardY + 34;
+    const avatarSize = 140;
+    try {
+        const avatar = await loadImage(user.displayAvatarURL({ extension: 'png', size: 256 }));
+        // circular mask
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+        // subtle ring
+        ctx.beginPath();
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(255,77,77,0.9)';
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 3, 0, Math.PI * 2);
+        ctx.stroke();
+    } catch (e) {
+        // ignore avatar errors
+    }
 
-    const avatar = await loadImage(user.displayAvatarURL({ extension: 'png', size: 256 }));
-    ctx.drawImage(avatar, 92, 72, 156, 156);
-    ctx.restore();
+    // Text area
+    const textX = avatarX + avatarSize + 36;
+    const textW = cardX + cardW - textX - 30;
 
-    ctx.strokeStyle = '#ff4d4d';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.arc(170, 150, 80, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.textAlign = 'center';
+    // Title
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 48px sans-serif';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = 10;
-    ctx.fillText('BIENVENIDO AL SERVIDOR DE DAKI', 585, 135);
+    ctx.font = '700 34px sans-serif';
+    ctx.fillText('Bienvenido al servidor de Daki', textX, avatarY + 40);
 
-    ctx.font = 'bold 28px sans-serif';
+    // Username
+    ctx.font = '600 22px sans-serif';
     ctx.fillStyle = '#f3f4f6';
-    ctx.fillText(user.tag, 585, 180);
+    ctx.fillText(user.tag, textX, avatarY + 80);
 
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillStyle = '#ff4d4d';
-    ctx.fillText(`¡Hola ${displayName}!`, 585, 222);
-
-    ctx.font = '20px sans-serif';
-    ctx.fillStyle = '#d1d5db';
-    ctx.fillText('Esperamos que disfrutes tu estadía con nosotros.', 585, 252);
+    // Welcome line (wrap)
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    const line = `¡Hola ${displayName}! Esperamos que disfrutes tu estadía y te unas a la comunidad.`;
+    const maxW = textW;
+    // simple wrap
+    const words = line.split(' ');
+    let cur = '';
+    let y = avatarY + 120;
+    for (const w of words) {
+        const test = cur ? `${cur} ${w}` : w;
+        const m = ctx.measureText(test).width;
+        if (m > maxW) {
+            ctx.fillText(cur, textX, y);
+            cur = w;
+            y += 22;
+        } else {
+            cur = test;
+        }
+    }
+    if (cur) ctx.fillText(cur, textX, y);
 
     return new AttachmentBuilder(canvas.toBuffer(), { name: 'welcome-image.png' });
 }
