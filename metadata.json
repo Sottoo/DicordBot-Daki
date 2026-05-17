@@ -1,0 +1,8 @@
+{
+  "name": "Daki Bot",
+  "description": "Un bot de discord profesional para moderación de servidores con comandos, fotos de bienvenida, y anti spam.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
