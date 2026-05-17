@@ -1,6 +1,7 @@
 import { AttachmentBuilder, Guild, User } from 'discord.js';
 import { createCanvas, loadImage, registerFont } from 'canvas';
 import fs from 'fs';
+import path from 'path';
 
 export async function createWelcomeCard(guild: Guild, user: User, displayName: string) {
     const canvasW = 1000;
@@ -11,12 +12,16 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
 
     // Try to register a bundled font if present to avoid missing-glyph squares
     try {
-        const fontPath = './assets/fonts/Inter-Regular.ttf';
+        const rel = path.join('assets', 'fonts', 'Inter-Regular.ttf');
+        const fontPath = path.resolve(process.cwd(), rel);
         if (fs.existsSync(fontPath)) {
             registerFont(fontPath, { family: 'Inter' });
+            console.log(`[WELCOME] Registered font from ${fontPath}`);
+        } else {
+            console.log(`[WELCOME] Font not found at ${fontPath}`);
         }
     } catch (e) {
-        // ignore font registration errors
+        console.error('[WELCOME] Error checking/registering font', e);
     }
 
     // Background: guild icon blurred or subtle gradient
