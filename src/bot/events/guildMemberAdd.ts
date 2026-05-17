@@ -22,7 +22,7 @@ export default {
         try {
             const attachment = await createWelcomeCard(member.guild, member.user, member.displayName);
 
-            await channel.send({ content: `¡Bienvenido al servidor de Daki, ${member}!`, files: [attachment] });
+            await channel.send({ files: [attachment] });
         } catch (error) {
             console.error('Error generating welcome image:', error);
         }

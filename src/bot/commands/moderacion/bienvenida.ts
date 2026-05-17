@@ -28,7 +28,7 @@ export default {
 
         try {
             const attachment = await createWelcomeCard(interaction.guild!, targetUser, targetUser.displayName ?? targetUser.username);
-            await sendableChannel.send({ content: `¡Bienvenido al servidor de Daki, ${targetUser}!`, files: [attachment] });
+            await sendableChannel.send({ files: [attachment] });
             await interaction.reply({ content: '✅ Bienvenida enviada correctamente.', ephemeral: true });
         } catch (error) {
             console.error('Error sending welcome test:', error);
