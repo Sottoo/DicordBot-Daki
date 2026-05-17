@@ -9,16 +9,21 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     const canvas = createCanvas(canvasW, canvasH);
     const ctx = canvas.getContext('2d');
     const blurCtx = ctx as typeof ctx & { filter: string };
+    const fontFamily = 'DakiWelcome';
 
     // Try to register a bundled font if present to avoid missing-glyph squares
     try {
-        const rel = path.join('assets', 'fonts', 'Inter-Regular.ttf');
-        const fontPath = path.resolve(process.cwd(), rel);
-        if (fs.existsSync(fontPath)) {
-            registerFont(fontPath, { family: 'Inter' });
-            console.log(`[WELCOME] Registered font from ${fontPath}`);
+        const candidates = [
+            path.resolve(process.cwd(), 'assets', 'fonts', 'NotoSans-Regular.ttf'),
+            path.resolve(process.cwd(), 'assets', 'fonts', 'Inter-Regular.ttf'),
+        ];
+        const fontPath = candidates.find(candidate => fs.existsSync(candidate));
+
+        if (fontPath) {
+            registerFont(fontPath, { family: fontFamily });
+            console.log(`[WELCOME] Registered font from ${fontPath} as ${fontFamily}`);
         } else {
-            console.log(`[WELCOME] Font not found at ${fontPath}`);
+            console.log(`[WELCOME] No bundled font found in ${candidates.join(', ')}`);
         }
     } catch (e) {
         console.error('[WELCOME] Error checking/registering font', e);
@@ -106,16 +111,16 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     // Title
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.font = '700 34px "Inter", sans-serif';
+    ctx.font = `700 34px "${fontFamily}", sans-serif`;
     ctx.fillText('Bienvenido al servidor de Daki', textX, avatarY + 40);
 
     // Username
-    ctx.font = '600 22px "Inter", sans-serif';
+    ctx.font = `600 22px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#f3f4f6';
     ctx.fillText(user.tag, textX, avatarY + 80);
 
     // Welcome line (wrap)
-    ctx.font = '16px "Inter", sans-serif';
+    ctx.font = `16px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#cbd5e1';
     const line = `¡Hola ${displayName}! Esperamos que disfrutes tu estadía y te unas a la comunidad.`;
     const maxW = textW;
