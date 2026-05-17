@@ -15,14 +15,11 @@ export async function startBot() {
     const intents = [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers, // ← Ahora siempre va a pedir el permiso para ver los miembros
     ];
 
     if (process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true') {
         intents.push(GatewayIntentBits.MessageContent);
-    }
-
-    if (process.env.ENABLE_GUILD_MEMBERS_INTENT === 'true') {
-        intents.push(GatewayIntentBits.GuildMembers);
     }
 
     const client = new CustomClient({

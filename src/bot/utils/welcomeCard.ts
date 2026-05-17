@@ -55,7 +55,7 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     ctx.font = `800 24px "${fontFamily}", sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🎟️ TICKET DE ADMISIÓN VIP', 26, 31);
+    ctx.fillText('TICKET DE ADMISIÓN VIP', 26, 31);
 
     // Date/Time in header
     const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -98,7 +98,7 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     // Subtitle
     ctx.font = `700 24px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#4A4A4A';
-    ctx.fillText(`NÚMERO DE TICKET: ${user.id}`, textX, 210);
+    ctx.fillText(`Member ID: ${user.id}`, textX, 210);
 
     // Username Box
     ctx.font = `800 28px "${fontFamily}", sans-serif`;
