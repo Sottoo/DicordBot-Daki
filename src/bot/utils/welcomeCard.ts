@@ -55,12 +55,12 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     ctx.font = `800 24px "${fontFamily}", sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('ENTRY LOG_ // DAKI SYSTEM', 26, 31);
+    ctx.fillText('🎟️ TICKET DE ADMISIÓN VIP', 26, 31);
 
     // Date/Time in header
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     ctx.textAlign = 'right';
-    ctx.fillText(`DATE: ${dateStr}`, canvasW - 30, 31);
+    ctx.fillText(`FECHA: ${dateStr}`, canvasW - 30, 31);
 
     // 5. Avatar Section
     const avatarSize = 180;
@@ -98,7 +98,7 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     // Subtitle
     ctx.font = `700 24px "${fontFamily}", sans-serif`;
     ctx.fillStyle = '#4A4A4A';
-    ctx.fillText(`MEMBER ID: ${user.id}`, textX, 210);
+    ctx.fillText(`NÚMERO DE TICKET: ${user.id}`, textX, 210);
 
     // Username Box
     ctx.font = `800 28px "${fontFamily}", sans-serif`;
@@ -127,7 +127,17 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     ctx.fillText(tagToDisplay, textX + 20, 270);
     ctx.restore();
 
-    // 7. Decorative Barcode
+    // 7. Ticket Perforation (tear-off line)
+    ctx.beginPath();
+    ctx.setLineDash([12, 10]);
+    ctx.moveTo(canvasW - 170, 56);
+    ctx.lineTo(canvasW - 170, canvasH - 6);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#D1CDC1';
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset line dash
+
+    // 8. Decorative Barcode
     const barcodeX = canvasW - 130;
     const barcodeY = 90;
     ctx.fillStyle = '#000000';
