@@ -1,5 +1,6 @@
 import { AttachmentBuilder, Guild, User } from 'discord.js';
-import { createCanvas, loadImage } from 'canvas';
+import { createCanvas, loadImage, registerFont } from 'canvas';
+import fs from 'fs';
 
 export async function createWelcomeCard(guild: Guild, user: User, displayName: string) {
     const canvasW = 1000;
@@ -7,6 +8,16 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     const canvas = createCanvas(canvasW, canvasH);
     const ctx = canvas.getContext('2d');
     const blurCtx = ctx as typeof ctx & { filter: string };
+
+    // Try to register a bundled font if present to avoid missing-glyph squares
+    try {
+        const fontPath = './assets/fonts/Inter-Regular.ttf';
+        if (fs.existsSync(fontPath)) {
+            registerFont(fontPath, { family: 'Inter' });
+        }
+    } catch (e) {
+        // ignore font registration errors
+    }
 
     // Background: guild icon blurred or subtle gradient
     const guildIconUrl = guild.iconURL({ extension: 'png', size: 1024 });
@@ -90,16 +101,16 @@ export async function createWelcomeCard(guild: Guild, user: User, displayName: s
     // Title
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.font = '700 34px sans-serif';
+    ctx.font = '700 34px "Inter", sans-serif';
     ctx.fillText('Bienvenido al servidor de Daki', textX, avatarY + 40);
 
     // Username
-    ctx.font = '600 22px sans-serif';
+    ctx.font = '600 22px "Inter", sans-serif';
     ctx.fillStyle = '#f3f4f6';
     ctx.fillText(user.tag, textX, avatarY + 80);
 
     // Welcome line (wrap)
-    ctx.font = '16px sans-serif';
+    ctx.font = '16px "Inter", sans-serif';
     ctx.fillStyle = '#cbd5e1';
     const line = `¡Hola ${displayName}! Esperamos que disfrutes tu estadía y te unas a la comunidad.`;
     const maxW = textW;
