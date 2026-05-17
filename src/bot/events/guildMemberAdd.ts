@@ -6,10 +6,16 @@ export default {
     name: Events.GuildMemberAdd,
     async execute(member: GuildMember, client: CustomClient) {
         const welcomeChannelId = process.env.WELCOME_CHANNEL_ID; 
-        if (!welcomeChannelId) return;
-        
-        const channel = member.guild.channels.cache.get(welcomeChannelId);
-        if (!channel || !channel.isTextBased()) return;
+        if (!welcomeChannelId) {
+            console.warn('WELCOME_CHANNEL_ID is not set. Welcome message will be skipped.');
+            return;
+        }
+
+        const channel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
+        if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+            console.warn(`Welcome channel not found or not sendable: ${welcomeChannelId}`);
+            return;
+        }
 
         try {
             // Create Canvas
