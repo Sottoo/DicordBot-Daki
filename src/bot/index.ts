@@ -12,13 +12,21 @@ export class CustomClient extends Client {
 }
 
 export async function startBot() {
+    const intents = [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+    ];
+
+    if (process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true') {
+        intents.push(GatewayIntentBits.MessageContent);
+    }
+
+    if (process.env.ENABLE_GUILD_MEMBERS_INTENT === 'true') {
+        intents.push(GatewayIntentBits.GuildMembers);
+    }
+
     const client = new CustomClient({
-        intents: [
-            GatewayIntentBits.Guilds,
-            GatewayIntentBits.GuildMessages,
-            GatewayIntentBits.MessageContent,
-            GatewayIntentBits.GuildMembers,
-        ]
+        intents
     });
 
     await loadEvents(client);
