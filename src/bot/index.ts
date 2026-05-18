@@ -5,6 +5,7 @@ import { Player } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { execSync } from 'child_process';
 import path from 'path';
+import { YoutubeiExtractor } from 'discord-player-youtubei';
 
 export class CustomClient extends Client {
     public commands: Collection<string, any>;
@@ -163,15 +164,18 @@ export async function startBot() {
     // El módulo play-dl fue instalado y discord-player lo detectará automáticamente 
     // como el motor principal para YouTube (DP_FORCE_YTDL_MOD=play-dl se puede usar si falla).
     
-    // Forzar el uso de youtube-ext que instalamos para el extractor de YouTube
-    process.env.DP_FORCE_YTDL_MOD = 'youtube-ext';
-    console.log('[Player] Configurado para usar youtube-ext como puente de YouTube.');
-
-    // Cargar extractores deshabilitando Soundcloud para que no interfiera 
-    // y asegurando que se usa YouTubeExtractor
-    await client.player.extractors.loadMulti(DefaultExtractors, {
-        'com.discord-player.soundcloudextractor': { disabled: true }
-    } as any);
+    // Cargar extractores por defecto
+    await client.player.extractors.loadMulti(DefaultExtractors);
+    
+    // Deshabilitar SoundCloud para evitar bloqueos de IP
+    client.player.extractors.unregister('com.discord-player.soundcloudextractor');
+    client.player.extractors.unregister('com.discord-player.youtubeextractor'); // Deshabilitamos el viejo
+    
+    // Registrar YoutubeiExtractor para evadir bloqueos de IP de YouTube
+    await client.player.extractors.register(YoutubeiExtractor, {
+        authentication: '' // Se puede poner el oauth_token si se cuenta con él, sino funcionará anónimo pero más estable
+    });
+    console.log('[Player] Configurado para usar YoutubeiExtractor.');
 
     await loadEvents(client as any);
     await loadCommands(client as any);

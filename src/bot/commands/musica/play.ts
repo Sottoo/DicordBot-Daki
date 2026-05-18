@@ -32,6 +32,7 @@ export default {
 
         try {
             const { track } = await player.play(voiceChannel as any, query, {
+                searchEngine: 'youtube',
                 nodeOptions: {
                     metadata: interaction,
                     leaveOnEmpty: true,
