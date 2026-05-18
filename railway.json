@@ -1,0 +1,10 @@
+{
+  "build": {
+    "aptPackages": ["ffmpeg"],
+    "installCmd": "npm install",
+    "buildCmd": "npm run build"
+  },
+  "deploy": {
+    "startCmd": "npm run start"
+  }
+}
