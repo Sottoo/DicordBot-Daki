@@ -1,4 +1,4 @@
-import { ChannelType, ChatInputCommandInteraction, SlashCommandBuilder, TextChannel, User } from 'discord.js';
+import { ChannelType, ChatInputCommandInteraction, SlashCommandBuilder, TextChannel, User, MessageFlags } from 'discord.js';
 import { createWelcomeCard } from '../../utils/welcomeCard.js';
 
 export default {
@@ -20,7 +20,7 @@ export default {
         const targetChannel = interaction.options.getChannel('canal') ?? interaction.channel;
 
         if (!targetChannel || !('send' in targetChannel)) {
-            await interaction.reply({ content: '❌ No encontré un canal válido para enviar la bienvenida.', ephemeral: true });
+            await interaction.reply({ content: '❌ No encontré un canal válido para enviar la bienvenida.', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -29,10 +29,10 @@ export default {
         try {
             const attachment = await createWelcomeCard(interaction.guild!, targetUser, targetUser.displayName ?? targetUser.username);
             await sendableChannel.send({ files: [attachment] });
-            await interaction.reply({ content: '✅ Bienvenida enviada correctamente.', ephemeral: true });
+            await interaction.reply({ content: '✅ Bienvenida enviada correctamente.', flags: MessageFlags.Ephemeral });
         } catch (error) {
             console.error('Error sending welcome test:', error);
-            await interaction.reply({ content: '❌ No pude generar la bienvenida de prueba.', ephemeral: true });
+            await interaction.reply({ content: '❌ No pude generar la bienvenida de prueba.', flags: MessageFlags.Ephemeral });
         }
     }
 };

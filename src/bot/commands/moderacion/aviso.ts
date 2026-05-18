@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommandInteraction, TextChannel } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChatInputCommandInteraction, TextChannel, MessageFlags } from 'discord.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -9,6 +9,10 @@ export default {
             option.setName('mensaje')
                 .setDescription('El mensaje que deseas anunciar')
                 .setRequired(true))
+        .addStringOption(option =>
+            option.setName('titulo')
+                .setDescription('El título del aviso (opcional)')
+                .setRequired(false))
         .addChannelOption(option =>
             option.setName('canal')
                 .setDescription('Canal donde se enviará el aviso')
@@ -16,16 +20,19 @@ export default {
 
     async execute(interaction: ChatInputCommandInteraction) {
         const mensaje = interaction.options.getString('mensaje');
+        const titulo = interaction.options.getString('titulo') || '📢 Aviso Oficial';
         const canal = interaction.options.getChannel('canal') as TextChannel | null || interaction.channel as TextChannel;
 
         const embed = new EmbedBuilder()
-            .setTitle('📢 Aviso Oficial')
+            .setAuthor({ name: 'Administración del Servidor', iconURL: interaction.client.user?.displayAvatarURL() })
+            .setTitle(titulo)
             .setDescription(mensaje)
-            .setColor('#ff4757')
-            .setFooter({ text: 'Daki Bot Moderación', iconURL: interaction.client.user?.displayAvatarURL() })
+            .setColor('#5B8CFF') // Color azul/morado más elegante
+            .setThumbnail(interaction.guild?.iconURL() || null)
+            .setFooter({ text: 'Notificación del Sistema Daki', iconURL: interaction.guild?.iconURL() || undefined })
             .setTimestamp();
 
         await canal.send({ embeds: [embed] });
-        await interaction.reply({ content: '✅ Aviso enviado correctamente.', ephemeral: true });
+        await interaction.reply({ content: '✅ Aviso enviado correctamente.', flags: MessageFlags.Ephemeral });
     }
 };

@@ -1,4 +1,4 @@
-import { Events, BaseInteraction } from 'discord.js';
+import { Events, BaseInteraction, MessageFlags } from 'discord.js';
 import { CustomClient } from '../index.js';
 
 export default {
@@ -14,9 +14,9 @@ export default {
         } catch (error) {
             console.error(`Error executing ${interaction.commandName}:`, error);
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'Hubo un error al ejecutar este comando.', ephemeral: true });
+                await interaction.followUp({ content: 'Hubo un error al ejecutar este comando.', flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ content: 'Hubo un error al ejecutar este comando.', ephemeral: true });
+                await interaction.reply({ content: 'Hubo un error al ejecutar este comando.', flags: MessageFlags.Ephemeral });
             }
         }
     }

@@ -1,4 +1,4 @@
-import { Events, Message } from 'discord.js';
+import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
 
 const userMessages = new Map<string, { count: number; timer: NodeJS.Timeout }>();
@@ -17,7 +17,11 @@ export default {
                 try {
                     await message.delete();
                     if (message.channel.isTextBased() && 'send' in message.channel) {
-                        await message.channel.send(`⚠️ ${message.author}, no está permitido enviar enlaces en este servidor.`);
+                        const embed = new EmbedBuilder()
+                            .setColor('#FFCC00')
+                            .setDescription(`⚠️ **¡Alto ahí, ${message.author}!**\nNo está permitido enviar enlaces externos en este servidor.`)
+                            .setFooter({ text: 'Sistema de Seguridad Daki' });
+                        await message.channel.send({ embeds: [embed] });
                     }
                 } catch (e) {
                     console.error("Failed to delete message or send warning for link:", e);
@@ -40,7 +44,11 @@ export default {
                     try {
                         await message.delete();
                         if (message.channel.isTextBased() && 'send' in message.channel) {
-                            await message.channel.send(`🛑 ${message.author}, deja de hacer spam. Has sido silenciado temporalmente.`);
+                            const embed = new EmbedBuilder()
+                                .setColor('#FF3366')
+                                .setDescription(`🛑 **¡Oye, ${message.author}!**\nPor favor, deja de hacer spam. Has sido silenciado temporalmente.`)
+                                .setFooter({ text: 'Sistema de Seguridad Daki' });
+                            await message.channel.send({ embeds: [embed] });
                         }
                         
                         if (message.member) {
