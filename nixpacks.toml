@@ -1,10 +1,7 @@
 providers = ["node"]
 
-[variables]
-YOUTUBE_DL_SKIP_PYTHON_CHECK = "1"
-
 [phases.setup]
-aptPkgs = ["ffmpeg", "python3", "make", "g++", "build-essential"]
+aptPkgs = ["python3", "make", "g++", "build-essential"]
 
 [phases.install]
 cmds = ["npm install"]
