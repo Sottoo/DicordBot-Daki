@@ -21,7 +21,6 @@
     "@vitejs/plugin-react": "^5.0.4",
     "canvas": "^3.2.3",
     "discord-player": "^7.2.0",
-    "discord-player-youtubei": "^2.0.0",
     "discord.js": "^14.26.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -31,10 +30,10 @@
     "mediaplex": "^1.0.0",
     "motion": "^12.23.24",
     "opusscript": "^0.0.8",
+    "play-dl": "^1.9.7",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3",
-    "youtube-dl-exec": "^3.1.7"
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

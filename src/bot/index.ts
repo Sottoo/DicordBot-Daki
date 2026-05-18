@@ -3,7 +3,6 @@ import loadEvents from './handlers/eventHandler.js';
 import loadCommands from './handlers/commandHandler.js';
 import { Player } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
-import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { execSync } from 'child_process';
 import path from 'path';
 
@@ -161,16 +160,10 @@ export async function startBot() {
         console.log(`[Player Debug] ${message}`);
     });
 
-    // Cargar el extractor de YouTube con cliente Android (evita el bloqueo de firma)
-    await client.player.extractors.register(YoutubeiExtractor, {
-        streamOptions: {
-            useClient: 'ANDROID' as any,
-            highWaterMark: 1 << 25,
-        },
-    });
+    // El módulo play-dl fue instalado y discord-player lo detectará automáticamente 
+    // como el motor principal para YouTube (DP_FORCE_YTDL_MOD=play-dl se puede usar si falla).
     
     // Cargar los demás extractores (Spotify, Apple Music, etc.)
-    // Deshabilitamos SoundCloud porque sus streams no funcionan desde Railway
     await client.player.extractors.loadMulti(DefaultExtractors, {
         'com.discord-player.soundcloudextractor': { disabled: true },
     } as any);

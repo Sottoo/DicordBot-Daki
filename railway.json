@@ -1,10 +1,9 @@
 {
   "build": {
     "aptPackages": ["ffmpeg", "python3", "make", "g++", "build-essential"],
-    "installCmd": "YOUTUBE_DL_SKIP_PYTHON_CHECK=1 npm install",
     "buildCmd": "npm run build"
   },
   "deploy": {
-    "startCmd": "npm run start"
+    "startCmd": "DP_FORCE_YTDL_MOD=play-dl npm run start"
   }
 }
