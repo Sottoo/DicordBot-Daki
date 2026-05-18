@@ -3,6 +3,7 @@ import loadEvents from './handlers/eventHandler.js';
 import loadCommands from './handlers/commandHandler.js';
 import { Player } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
+import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { execSync } from 'child_process';
 import path from 'path';
 
@@ -160,7 +161,10 @@ export async function startBot() {
         console.log(`[Player Debug] ${message}`);
     });
 
-    // Cargar los extractores por defecto (YouTube, Spotify, SoundCloud, etc.)
+    // Cargar el extractor de YouTube (fuente principal de audio)
+    await client.player.extractors.register(YoutubeiExtractor, {});
+    
+    // Cargar los demás extractores (Spotify, SoundCloud, etc.)
     await client.player.extractors.loadMulti(DefaultExtractors);
 
     await loadEvents(client as any);
