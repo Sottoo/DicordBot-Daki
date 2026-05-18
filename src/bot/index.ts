@@ -161,11 +161,19 @@ export async function startBot() {
         console.log(`[Player Debug] ${message}`);
     });
 
-    // Cargar el extractor de YouTube (fuente principal de audio)
-    await client.player.extractors.register(YoutubeiExtractor, {});
+    // Cargar el extractor de YouTube con cliente Android (evita el bloqueo de firma)
+    await client.player.extractors.register(YoutubeiExtractor, {
+        streamOptions: {
+            useClient: 'ANDROID' as any,
+            highWaterMark: 1 << 25,
+        },
+    });
     
-    // Cargar los demás extractores (Spotify, SoundCloud, etc.)
-    await client.player.extractors.loadMulti(DefaultExtractors);
+    // Cargar los demás extractores (Spotify, Apple Music, etc.)
+    // Deshabilitamos SoundCloud porque sus streams no funcionan desde Railway
+    await client.player.extractors.loadMulti(DefaultExtractors, {
+        'com.discord-player.soundcloudextractor': { disabled: true },
+    } as any);
 
     await loadEvents(client as any);
     await loadCommands(client as any);
