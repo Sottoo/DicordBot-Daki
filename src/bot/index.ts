@@ -95,6 +95,45 @@ export async function startBot() {
     // Logs de depuración para ver por qué falla la música
     client.player.events.on('playerStart', (queue, track) => {
         console.log(`[Player] ▶️ Reproduciendo: ${track.title} | Fuente: ${track.raw?.source || track.source}`);
+        
+        // Inspeccionar el estado interno del reproductor
+        try {
+            const dispatcher = queue.dispatcher;
+            if (dispatcher) {
+                console.log(`[Player Deep] Dispatcher existe: ✅`);
+                console.log(`[Player Deep] Voice connection status: ${(dispatcher as any).voiceConnection?.state?.status || 'desconocido'}`);
+                console.log(`[Player Deep] Audio player status: ${(dispatcher as any).audioPlayer?.state?.status || 'desconocido'}`);
+                
+                // Escuchar errores en el stream
+                const audioResource = (dispatcher as any).audioResource;
+                if (audioResource) {
+                    console.log(`[Player Deep] Audio resource existe: ✅`);
+                    console.log(`[Player Deep] Audio resource readable: ${audioResource.readable}`);
+                    console.log(`[Player Deep] Audio resource ended: ${audioResource.ended}`);
+                    
+                    if (audioResource.playStream) {
+                        audioResource.playStream.on('error', (err: any) => {
+                            console.error(`[Player Deep] ❌ Error en el playStream:`, err);
+                        });
+                        audioResource.playStream.on('end', () => {
+                            console.log(`[Player Deep] playStream terminó`);
+                        });
+                    }
+                } else {
+                    console.error(`[Player Deep] ❌ Audio resource NO existe`);
+                }
+            } else {
+                console.error(`[Player Deep] ❌ Dispatcher NO existe`);
+            }
+        } catch (e) {
+            console.error(`[Player Deep] Error inspeccionando:`, e);
+        }
+    });
+    client.player.events.on('playerFinish', (queue, track) => {
+        console.log(`[Player] ⏏️ Canción terminada: ${track.title}`);
+    });
+    client.player.events.on('playerSkip', (queue, track) => {
+        console.log(`[Player] ⏭️ Canción saltada automáticamente: ${track.title} (posible error de stream)`);
     });
     client.player.events.on('audioTrackAdd', (queue, track) => {
         console.log(`[Player] ➕ Canción añadida a la cola: ${track.title}`);
@@ -111,8 +150,8 @@ export async function startBot() {
     client.player.events.on('emptyChannel', (queue) => {
         console.log(`[Player] 👻 Canal de voz vacío`);
     });
-    client.player.events.on('playerError', (queue, error) => {
-        console.error(`[Player Error Audio] El reproductor tuvo un error:`, error);
+    client.player.events.on('playerError', (queue, error, track) => {
+        console.error(`[Player Error Audio] Error en: ${track.title}`, error);
     });
     client.player.events.on('error', (queue, error) => {
         console.error(`[Player Error General] Error en la cola:`, error);
