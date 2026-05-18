@@ -33,6 +33,17 @@ export async function startBot() {
     // Inicializar el reproductor de música
     client.player = new Player(client as any);
     
+    // Logs de depuración para ver por qué falla la música
+    client.player.events.on('playerError', (queue, error) => {
+        console.error(`[Player Error Audio] El reproductor tuvo un error:`, error);
+    });
+    client.player.events.on('error', (queue, error) => {
+        console.error(`[Player Error General] Error en la cola:`, error);
+    });
+    client.player.on('debug', (message) => {
+        console.log(`[Player Debug] ${message}`);
+    });
+
     // Cargar los extractores por defecto (YouTube, Spotify, SoundCloud, etc.)
     await client.player.extractors.loadMulti(DefaultExtractors);
 
