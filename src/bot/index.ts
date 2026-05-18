@@ -163,15 +163,14 @@ export async function startBot() {
     // El módulo play-dl fue instalado y discord-player lo detectará automáticamente 
     // como el motor principal para YouTube (DP_FORCE_YTDL_MOD=play-dl se puede usar si falla).
     
-    // Forzar el uso de play-dl en el entorno
-    process.env.DP_FORCE_YTDL_MOD = 'play-dl';
-    console.log('[Player] Configurado para usar play-dl para YouTube.');
+    // Forzar el uso de youtube-ext que instalamos para el extractor de YouTube
+    process.env.DP_FORCE_YTDL_MOD = 'youtube-ext';
+    console.log('[Player] Configurado para usar youtube-ext como puente de YouTube.');
 
-    // Cargar los extractores estándar (esto incluye el YouTubeExtractor oficial)
+    // Cargar extractores deshabilitando Soundcloud para que no interfiera 
+    // y asegurando que se usa YouTubeExtractor
     await client.player.extractors.loadMulti(DefaultExtractors, {
-        'com.discord-player.youtubeextractor': {
-            useProxy: false
-        }
+        'com.discord-player.soundcloudextractor': { disabled: true }
     } as any);
 
     await loadEvents(client as any);
