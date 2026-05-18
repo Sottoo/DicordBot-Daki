@@ -3,6 +3,7 @@ import loadEvents from './handlers/eventHandler.js';
 import loadCommands from './handlers/commandHandler.js';
 import { Player } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
+import { execSync } from 'child_process';
 
 export class CustomClient extends Client {
     public commands: Collection<string, any>;
@@ -15,6 +16,53 @@ export class CustomClient extends Client {
 }
 
 export async function startBot() {
+    // ====== DIAGNÓSTICO DE AUDIO ======
+    console.log('[Audio Check] Verificando dependencias de audio...');
+
+    // Verificar FFmpeg
+    try {
+        const ffmpegVersion = execSync('ffmpeg -version', { encoding: 'utf-8' }).split('\n')[0];
+        console.log(`[Audio Check] ✅ FFmpeg del sistema encontrado: ${ffmpegVersion}`);
+    } catch {
+        console.warn('[Audio Check] ⚠️ FFmpeg NO está instalado en el sistema. Buscando ffmpeg-static...');
+        try {
+            const ffmpegStatic = await import('ffmpeg-static');
+            const ffmpegPath = (ffmpegStatic as any).default as string;
+            if (ffmpegPath) {
+                process.env.FFMPEG_PATH = ffmpegPath;
+                console.log(`[Audio Check] ✅ ffmpeg-static encontrado en: ${ffmpegPath}`);
+            } else {
+                console.error('[Audio Check] ❌ ffmpeg-static no retornó una ruta válida.');
+            }
+        } catch (e) {
+            console.error('[Audio Check] ❌ No se pudo cargar ffmpeg-static:', e);
+        }
+    }
+
+    // Verificar Opus
+    try {
+        await import('opusscript');
+        console.log('[Audio Check] ✅ opusscript (codificador Opus JS) encontrado.');
+    } catch {
+        console.warn('[Audio Check] ⚠️ opusscript no encontrado.');
+    }
+    try {
+        await import('mediaplex');
+        console.log('[Audio Check] ✅ mediaplex (codificador nativo) encontrado.');
+    } catch {
+        console.warn('[Audio Check] ⚠️ mediaplex nativo no disponible (es normal en algunos entornos).');
+    }
+
+    // Verificar libsodium
+    try {
+        await import('libsodium-wrappers');
+        console.log('[Audio Check] ✅ libsodium-wrappers (encriptación) encontrado.');
+    } catch {
+        console.warn('[Audio Check] ⚠️ libsodium-wrappers no encontrado.');
+    }
+    console.log('[Audio Check] Diagnóstico completo.');
+    // ====== FIN DIAGNÓSTICO ======
+
     const intents = [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
