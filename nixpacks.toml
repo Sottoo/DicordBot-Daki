@@ -2,3 +2,6 @@ providers = ["node"]
 
 [phases.setup]
 aptPkgs = ["ffmpeg"]
+
+[phases.install]
+cmds = ["npm install"]
