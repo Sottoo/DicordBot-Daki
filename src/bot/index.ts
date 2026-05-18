@@ -34,6 +34,24 @@ export async function startBot() {
     client.player = new Player(client as any);
     
     // Logs de depuración para ver por qué falla la música
+    client.player.events.on('playerStart', (queue, track) => {
+        console.log(`[Player] ▶️ Reproduciendo: ${track.title} | Fuente: ${track.raw?.source || track.source}`);
+    });
+    client.player.events.on('audioTrackAdd', (queue, track) => {
+        console.log(`[Player] ➕ Canción añadida a la cola: ${track.title}`);
+    });
+    client.player.events.on('connection', (queue) => {
+        console.log(`[Player] 🔊 Conectado al canal de voz`);
+    });
+    client.player.events.on('disconnect', () => {
+        console.log(`[Player] 🔇 Desconectado del canal de voz`);
+    });
+    client.player.events.on('emptyQueue', (queue) => {
+        console.log(`[Player] 📭 La cola está vacía`);
+    });
+    client.player.events.on('emptyChannel', (queue) => {
+        console.log(`[Player] 👻 Canal de voz vacío`);
+    });
     client.player.events.on('playerError', (queue, error) => {
         console.error(`[Player Error Audio] El reproductor tuvo un error:`, error);
     });

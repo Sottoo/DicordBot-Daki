@@ -1,6 +1,6 @@
 {
   "build": {
-    "aptPackages": ["ffmpeg"],
+    "aptPackages": ["ffmpeg", "python3", "make", "g++", "build-essential"],
     "installCmd": "npm install",
     "buildCmd": "npm run build"
   },

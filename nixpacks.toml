@@ -1,7 +1,7 @@
 providers = ["node"]
 
 [phases.setup]
-aptPkgs = ["ffmpeg"]
+aptPkgs = ["ffmpeg", "python3", "make", "g++", "build-essential"]
 
 [phases.install]
 cmds = ["npm install"]
