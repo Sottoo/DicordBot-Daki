@@ -4,6 +4,7 @@ import loadCommands from './handlers/commandHandler.js';
 import { Player } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { execSync } from 'child_process';
+import path from 'path';
 
 export class CustomClient extends Client {
     public commands: Collection<string, any>;
@@ -24,13 +25,23 @@ export async function startBot() {
         const ffmpegVersion = execSync('ffmpeg -version', { encoding: 'utf-8' }).split('\n')[0];
         console.log(`[Audio Check] ✅ FFmpeg del sistema encontrado: ${ffmpegVersion}`);
     } catch {
-        console.warn('[Audio Check] ⚠️ FFmpeg NO está instalado en el sistema. Buscando ffmpeg-static...');
+        console.warn('[Audio Check] ⚠️ FFmpeg NO está en el PATH del sistema. Buscando ffmpeg-static...');
         try {
             const ffmpegStatic = await import('ffmpeg-static');
             const ffmpegPath = (ffmpegStatic as any).default as string;
             if (ffmpegPath) {
-                process.env.FFMPEG_PATH = ffmpegPath;
-                console.log(`[Audio Check] ✅ ffmpeg-static encontrado en: ${ffmpegPath}`);
+                // Hacer ejecutable el binario y agregarlo al PATH del sistema
+                const ffmpegDir = path.dirname(ffmpegPath);
+                try { execSync(`chmod +x "${ffmpegPath}"`); } catch {}
+                process.env.PATH = `${ffmpegDir}:${process.env.PATH}`;
+                
+                // Verificar que ahora sí funciona
+                try {
+                    const version = execSync('ffmpeg -version', { encoding: 'utf-8' }).split('\n')[0];
+                    console.log(`[Audio Check] ✅ ffmpeg-static inyectado al PATH correctamente: ${version}`);
+                } catch {
+                    console.error(`[Audio Check] ❌ ffmpeg-static encontrado en ${ffmpegPath} pero no se puede ejecutar.`);
+                }
             } else {
                 console.error('[Audio Check] ❌ ffmpeg-static no retornó una ruta válida.');
             }
