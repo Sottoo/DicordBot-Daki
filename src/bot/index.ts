@@ -171,11 +171,26 @@ export async function startBot() {
     client.player.extractors.unregister('com.discord-player.soundcloudextractor');
     client.player.extractors.unregister('com.discord-player.youtubeextractor'); // Deshabilitamos el viejo
     
-    // Registrar YoutubeiExtractor para evadir bloqueos de IP de YouTube
+    // Registrar YoutubeiExtractor con cookies para evadir bloqueos de IP en Railway
+    const ytCookie = process.env.YOUTUBE_COOKIE || '';
+    if (!ytCookie) {
+        console.warn('[Player] ⚠️ YOUTUBE_COOKIE no está configurada. YouTube probablemente bloqueará las peticiones desde Railway.');
+        console.warn('[Player] ⚠️ Exporta tus cookies de YouTube y agrégalas como variable de entorno YOUTUBE_COOKIE en Railway.');
+    } else {
+        console.log('[Player] ✅ Cookies de YouTube detectadas.');
+    }
+    
     await client.player.extractors.register(YoutubeiExtractor, {
-        authentication: '' // Se puede poner el oauth_token si se cuenta con él, sino funcionará anónimo pero más estable
+        // Cookies de una sesión real de YouTube para evadir bloqueos de IP
+        cookie: ytCookie || undefined,
+        // Usar cliente ANDROID_MUSIC para evitar la necesidad de descifrar signatures de JS
+        streamOptions: {
+            useClient: 'ANDROID_MUSIC' as any
+        },
+        // No fallar si hay errores de login
+        ignoreSignInErrors: true,
     });
-    console.log('[Player] Configurado para usar YoutubeiExtractor.');
+    console.log('[Player] Configurado para usar YoutubeiExtractor con cliente ANDROID_MUSIC.');
 
     await loadEvents(client as any);
     await loadCommands(client as any);
