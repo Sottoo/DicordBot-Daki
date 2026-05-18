@@ -4,6 +4,6 @@
     "buildCmd": "npm run build"
   },
   "deploy": {
-    "startCmd": "DP_FORCE_YTDL_MOD=youtube-ext npm run start"
+    "startCmd": "npm run start"
   }
 }
