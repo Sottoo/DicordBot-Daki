@@ -35,6 +35,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3",
+    "youtube-dl-exec": "^3.1.7",
     "youtube-ext": "^1.1.25",
     "youtubei.js": "^17.0.1"
   },
