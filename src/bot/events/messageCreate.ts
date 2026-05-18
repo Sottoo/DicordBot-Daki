@@ -1,6 +1,13 @@
 import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
+import { GoogleGenAI } from '@google/genai';
 
+interface ChatMessage {
+    role: 'user' | 'model';
+    parts: { text: string }[];
+}
+
+const channelHistory = new Map<string, ChatMessage[]>();
 const userMessages = new Map<string, { count: number; timer: NodeJS.Timeout }>();
 const LIMIT = 5; // messages
 const TIME = 5000; // 5 seconds
@@ -88,7 +95,89 @@ export default {
                     } catch (err) {
                         console.log('Faltan permisos para mutear o borrar mensaje en anti-spam.');
                     }
+                    return;
                 }
+            }
+        }
+
+        // 3. MÓDULO DE INTELIGENCIA ARTIFICIAL (GEMINI CHAT)
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) return;
+
+        const isMentioned = message.mentions.has(client.user!) && !message.mentions.everyone;
+        const isAiChannel = 'name' in message.channel && typeof (message.channel as any).name === 'string' && (
+            (message.channel as any).name.includes('habla-con-daki') || 
+            (message.channel as any).name.includes('daki-ia')
+        );
+
+        if (isMentioned || isAiChannel) {
+            try {
+                // Indicamos que Daki está escribiendo
+                if (message.channel.isTextBased() && 'sendTyping' in message.channel) {
+                    await (message.channel as any).sendTyping();
+                }
+
+                const botMentionRegex = new RegExp(`<@!?${client.user!.id}>`, 'g');
+                const cleanContent = message.content.replace(botMentionRegex, '').trim();
+
+                if (!cleanContent && isMentioned) {
+                    await message.reply('¡Hola! 💫 ¿En qué te puedo ayudar hoy? Escríbeme tu duda o consulta.');
+                    return;
+                }
+
+                if (!cleanContent) return;
+
+                const ai = new GoogleGenAI({ apiKey });
+                
+                // Obtenemos historial del canal
+                let history = channelHistory.get(message.channel.id) || [];
+                
+                // Mantenemos las últimas 15 interacciones para no saturar la memoria
+                if (history.length > 15) {
+                    history = history.slice(-15);
+                }
+
+                const systemInstruction = 
+                    "Eres Daki, una asistente de Discord inteligente, carismática, alegre y un poco juguetona. " +
+                    "Tus respuestas deben ser naturales, fluidas y amigables. Puedes usar emojis libremente. " +
+                    "Mantén las respuestas de tamaño moderado, ideales para chat. Dirígete a los usuarios de forma cercana. " +
+                    "Si te hacen preguntas complejas o creativas, responde con ingenio.";
+
+                const chat = ai.chats.create({
+                    model: 'gemini-2.5-flash',
+                    history: history,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        temperature: 0.7,
+                        maxOutputTokens: 500,
+                    }
+                });
+
+                const response = await chat.sendMessage({ message: cleanContent });
+                const answer = response.text || 'Ups, mis circuitos cerebrales se cruzaron un poco. ¿Podrías repetir eso?';
+
+                // Guardamos el historial actualizado
+                const updatedHistory = await chat.getHistory();
+                channelHistory.set(message.channel.id, updatedHistory as ChatMessage[]);
+
+                // Respondemos al usuario dividiendo el mensaje si es necesario
+                if (answer.length > 2000) {
+                    const chunks = [];
+                    for (let i = 0; i < answer.length; i += 1900) {
+                        chunks.push(answer.substring(i, i + 1900));
+                    }
+                    
+                    await message.reply(chunks[0]);
+                    for (let i = 1; i < chunks.length; i++) {
+                        if ('send' in message.channel) {
+                            await (message.channel as any).send(chunks[i]);
+                        }
+                    }
+                } else {
+                    await message.reply(answer);
+                }
+            } catch (error) {
+                console.error('Error en chat de IA de Daki:', error);
             }
         }
     }
