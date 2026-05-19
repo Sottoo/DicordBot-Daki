@@ -53,18 +53,13 @@ export default {
 
             const answer = response.text || 'No pude generar una respuesta en este momento. Inténtalo de nuevo.';
 
-            // Diseño simple pero profesional: Un Embed minimalista que se fusiona con Discord
-            const embed = new EmbedBuilder()
-                .setColor('#2B2D31') // Color oscuro nativo de Discord para un look limpio y sin bordes llamativos
-                .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-                .setDescription(`**${pregunta}**\n\n${answer}`);
+            // Mensaje default de Discord que menciona al usuario para que se entienda perfectamente a quién responde
+            const formattedReply = `<@${interaction.user.id}>, ${answer}`;
 
-            if (answer.length > 2000) {
-                // Si por alguna razón es muy larga, enviamos texto plano dividido
+            if (formattedReply.length > 2000) {
                 const chunks = [];
-                const plainText = `**${interaction.user.username} preguntó:** ${pregunta}\n\n${answer}`;
-                for (let i = 0; i < plainText.length; i += 1900) {
-                    chunks.push(plainText.substring(i, i + 1900));
+                for (let i = 0; i < formattedReply.length; i += 1900) {
+                    chunks.push(formattedReply.substring(i, i + 1900));
                 }
                 await interaction.editReply(chunks[0]);
                 for (let i = 1; i < chunks.length; i++) {
@@ -73,7 +68,7 @@ export default {
                     }
                 }
             } else {
-                await interaction.editReply({ embeds: [embed] });
+                await interaction.editReply({ content: formattedReply });
             }
 
         } catch (error) {
