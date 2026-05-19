@@ -19,7 +19,7 @@ export default {
                 .setTitle('⚠️ Configuración Incompleta')
                 .setDescription('El módulo de Inteligencia Artificial no está configurado.\nEl administrador del bot debe agregar la variable de entorno `GEMINI_API_KEY` con una clave válida de Google AI Studio.')
                 .setFooter({ text: 'Daki Bot IA' });
-            
+
             await interaction.reply({ embeds: [noKeyEmbed], flags: MessageFlags.Ephemeral });
             return;
         }
@@ -31,19 +31,19 @@ export default {
 
         try {
             const ai = new GoogleGenAI({ apiKey });
-            
-            // Instrucciones para personalidad pasivo-agresiva, sarcástica y sobria (humor seco y elegante)
-            const systemInstruction = 
-                "Eres Daki, una asistente de Discord con una personalidad sumamente sarcástica, fría y pasivo-agresiva. " +
-                "Tus respuestas deben ser secas, cortas y directas al grano (máximo 2 o 3 oraciones cortas, unas 40 palabras). " +
-                "NUNCA uses listas, explicaciones de Wikipedia ni introducciones largas. " +
-                "Evita por completo la jerga forzada de internet como 'bro', 'pana', 'god', 'cringe' o 'no manches'. " +
-                "Usa un humor negro, sutil e inteligente. Trata a los usuarios con un desdén elegante y una carrilla pasivo-agresiva sobria, " +
-                "como si responderles fuera un favor que les estás haciendo de mala gana. " +
-                "Si te piden comparar dos cosas o personas, sé tajante, elige una postura con desprecio hacia la otra y destruye al rival con una sola frase mordaz.";
+
+            // Instrucciones para personalidad realista: moderadora del servidor de Daki (el streamer), sarcástica y sobria
+            const systemInstruction =
+                "Eres Daki Bot, el bot oficial encargado de moderar, limpiar el spam y mantener el orden en el servidor de Discord del streamer Daki. " +
+                "Tus respuestas deben ser, directas y cortas (máximo 2 o 3 oraciones sencillas, unas 40 palabras). " +
+                "Evita por completo sonar como una mona china de anime ('tsundere') o ser exageradamente infantil u hostil. " +
+                "En su lugar, compórtate como un moderador real de chat: relajado, con un humor irónico, sarcástico y pasivo-agresivo sobrio, " +
+                "como un amigo maduro que te tira carrilla inteligente y un poco seca en los streams. " +
+                "Si te preguntan quién eres, aclara con orgullo pero con tu toque sarcástico que eres el bot de moderación de Daki. " +
+                "Si te piden comparar o elegir entre dos cosas, sé tajante, toma partido de inmediato y bromea inteligentemente sobre la otra opción.";
 
             const response = await ai.models.generateContent({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.0-flash',
                 contents: pregunta,
                 config: {
                     systemInstruction: systemInstruction,
@@ -75,14 +75,13 @@ export default {
 
         } catch (error: any) {
             console.error('Error al consultar Gemini API:', error);
-            
             if (error?.status === 429) {
                 await interaction.editReply({
-                    content: '⏳ ¡Tranquilos! Me están haciendo demasiadas preguntas muy rápido. Denme unos 40 segundos para procesar todo.'
+                    content: '⏳ ¡Paciencia, banda! Llegamos al límite de mensajes gratuitos por minuto. Denme unos segundos para respirar.'
                 });
             } else {
-                await interaction.editReply({ 
-                    content: '❌ Ugh, mis circuitos se cruzaron. Hubo un problema de conexión con mi cerebro de IA. Inténtalo más tarde.' 
+                await interaction.editReply({
+                    content: '❌ Lo siento, hubo un problema al conectar con mis circuitos cerebrales de IA. Por favor, vuelve a intentarlo más tarde.'
                 });
             }
         }
