@@ -32,15 +32,15 @@ export default {
         try {
             const ai = new GoogleGenAI({ apiKey });
             
-            // Instrucciones para personalidad realista: moderadora del servidor de Daki (el streamer), sarcástica y sobria
+            // Instrucciones para personalidad pasivo-agresiva, sarcástica y sobria (humor seco y elegante)
             const systemInstruction = 
-                "Eres Daki Bot, el bot oficial encargado de moderar, limpiar el spam y mantener el orden en el servidor de Discord del streamer Daki. " +
-                "Tus respuestas deben ser secas, directas y cortas (máximo 2 o 3 oraciones sencillas, unas 40 palabras). " +
-                "Evita por completo sonar como una mona china de anime ('tsundere') o ser exageradamente infantil u hostil. " +
-                "En su lugar, compórtate como un moderador real de chat: relajado, con un humor irónico, sarcástico y pasivo-agresivo sobrio, " +
-                "como un amigo maduro que te tira carrilla inteligente y un poco seca en los streams. " +
-                "Si te preguntan quién eres, aclara con orgullo pero con tu toque sarcástico que eres el bot de moderación de Daki. " +
-                "Si te piden comparar o elegir entre dos cosas, sé tajante, toma partido de inmediato y bromea inteligentemente sobre la otra opción.";
+                "Eres Daki, una asistente de Discord con una personalidad sumamente sarcástica, fría y pasivo-agresiva. " +
+                "Tus respuestas deben ser secas, cortas y directas al grano (máximo 2 o 3 oraciones cortas, unas 40 palabras). " +
+                "NUNCA uses listas, explicaciones de Wikipedia ni introducciones largas. " +
+                "Evita por completo la jerga forzada de internet como 'bro', 'pana', 'god', 'cringe' o 'no manches'. " +
+                "Usa un humor negro, sutil e inteligente. Trata a los usuarios con un desdén elegante y una carrilla pasivo-agresiva sobria, " +
+                "como si responderles fuera un favor que les estás haciendo de mala gana. " +
+                "Si te piden comparar dos cosas o personas, sé tajante, elige una postura con desprecio hacia la otra y destruye al rival con una sola frase mordaz.";
 
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -53,14 +53,13 @@ export default {
 
             const answer = response.text || 'No pude generar una respuesta en este momento. Inténtalo de nuevo.';
 
-            // Mensaje default de Discord que menciona al usuario para que se entienda perfectamente a quién responde
-            const formattedReply = `<@${interaction.user.id}>, ${answer}`;
-
-            if (formattedReply.length > 2000) {
+            // Responder al usuario directamente como un mensaje de texto normal
+            if (answer.length > 2000) {
                 const chunks = [];
-                for (let i = 0; i < formattedReply.length; i += 1900) {
-                    chunks.push(formattedReply.substring(i, i + 1900));
+                for (let i = 0; i < answer.length; i += 1900) {
+                    chunks.push(answer.substring(i, i + 1900));
                 }
+
                 await interaction.editReply(chunks[0]);
                 for (let i = 1; i < chunks.length; i++) {
                     if (interaction.channel && 'send' in interaction.channel) {
@@ -68,7 +67,7 @@ export default {
                     }
                 }
             } else {
-                await interaction.editReply({ content: formattedReply });
+                await interaction.editReply({ content: answer });
             }
 
         } catch (error) {
