@@ -43,7 +43,7 @@ export default {
                 "Si te piden comparar dos cosas o personas, sé tajante, elige una postura con desprecio hacia la otra y destruye al rival con una sola frase mordaz.";
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-1.5-flash',
                 contents: pregunta,
                 config: {
                     systemInstruction: systemInstruction,
@@ -53,11 +53,14 @@ export default {
 
             const answer = response.text || 'No pude generar una respuesta en este momento. Inténtalo de nuevo.';
 
+            // Formateamos el mensaje para que se vea como una conversación natural (citas de Discord)
+            const formattedReply = `> **${interaction.user.username}:** *${pregunta}*\n\n${answer}`;
+
             // Responder al usuario directamente como un mensaje de texto normal
-            if (answer.length > 2000) {
+            if (formattedReply.length > 2000) {
                 const chunks = [];
-                for (let i = 0; i < answer.length; i += 1900) {
-                    chunks.push(answer.substring(i, i + 1900));
+                for (let i = 0; i < formattedReply.length; i += 1900) {
+                    chunks.push(formattedReply.substring(i, i + 1900));
                 }
 
                 await interaction.editReply(chunks[0]);
@@ -67,7 +70,7 @@ export default {
                     }
                 }
             } else {
-                await interaction.editReply({ content: answer });
+                await interaction.editReply({ content: formattedReply });
             }
 
         } catch (error: any) {

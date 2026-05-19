@@ -146,7 +146,7 @@ export default {
                     "como si responderles fuera un favor fastidioso que les haces de mala gana.";
 
                 const chat = ai.chats.create({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-1.5-flash',
                     history: history,
                     config: {
                         systemInstruction: systemInstruction,
