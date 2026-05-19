@@ -1,6 +1,11 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, AttachmentBuilder } from 'discord.js';
 import { getUser } from '../../utils/db.js';
 import { createCanvas, loadImage, registerFont } from 'canvas';
+import path from 'path';
+
+// Registrar fuentes locales para evitar los cuadros (tofu blocks) en servidores Linux/Railway
+registerFont(path.join(process.cwd(), 'src/assets/fonts/Roboto-Bold.ttf'), { family: 'Roboto', weight: 'bold' });
+registerFont(path.join(process.cwd(), 'src/assets/fonts/Roboto-Regular.ttf'), { family: 'Roboto', weight: 'normal' });
 
 export default {
     data: new SlashCommandBuilder()
@@ -18,28 +23,43 @@ export default {
         const targetUser = interaction.options.getUser('usuario') || interaction.user;
         const userData = getUser(targetUser.id);
 
-        // --- CÓDIGO DE CANVAS PARA LA TARJETA NEO-BRUTALISTA ---
+        // --- CÓDIGO DE CANVAS PARA TARJETA PROFESIONAL/GAMING ---
         const canvas = createCanvas(800, 250);
         const ctx = canvas.getContext('2d');
 
-        // Fondo (Blanco roto crudo típico brutalista)
-        ctx.fillStyle = '#f4f4f0';
+        // Borde redondeado de toda la tarjeta
+        const radius = 25;
+        ctx.beginPath();
+        ctx.moveTo(radius, 0);
+        ctx.lineTo(canvas.width - radius, 0);
+        ctx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
+        ctx.lineTo(canvas.width, canvas.height - radius);
+        ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
+        ctx.lineTo(radius, canvas.height);
+        ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
+        ctx.lineTo(0, radius);
+        ctx.quadraticCurveTo(0, 0, radius, 0);
+        ctx.closePath();
+        ctx.clip();
+
+        // Fondo: Imagen premium cargada desde assets
+        try {
+            const bgImage = await loadImage(path.join(process.cwd(), 'src/assets/images/rank_bg.png'));
+            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        } catch (e) {
+            // Fallback si por alguna razón no carga la imagen
+            ctx.fillStyle = '#111214';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Capa de oscurecimiento (Glassmorphism oscuro)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Borde exterior grueso (estilo brutalista)
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#000000';
-        ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-        // Bloque decorativo de color lima/neón a la izquierda
-        ctx.fillStyle = '#CCFF00';
-        ctx.fillRect(0, 0, 250, canvas.height);
-        ctx.strokeRect(0, 0, 250, canvas.height); // Borde divisorio
-
         // Avatar
-        const avatarSize = 140;
-        const avatarX = 55;
-        const avatarY = 55;
+        const avatarSize = 150;
+        const avatarX = 50;
+        const avatarY = 50;
         
         ctx.save();
         ctx.beginPath();
@@ -51,60 +71,66 @@ export default {
             const avatar = await loadImage(targetUser.displayAvatarURL({ extension: 'png', size: 256 }));
             ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
         } catch (e) {
-            // Fallback si no tiene avatar
             ctx.fillStyle = '#333333';
             ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
         }
         ctx.restore();
 
-        // Borde del Avatar
+        // Aro de color alrededor del avatar (Glow púrpura/neón)
         ctx.beginPath();
-        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2, true);
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 3, 0, Math.PI * 2, true);
         ctx.lineWidth = 6;
-        ctx.strokeStyle = '#000000';
+        ctx.strokeStyle = '#9d4edd'; // Púrpura gaming
         ctx.stroke();
 
-        // Textos
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillText(targetUser.username.toUpperCase(), 280, 80);
+        // Textos (Usando la fuente Roboto local para evitar cuadrados)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 38px Roboto';
+        ctx.fillText(targetUser.username, 240, 95);
 
-        ctx.fillStyle = '#555555';
-        ctx.font = '24px sans-serif';
-        ctx.fillText('NIVEL', 280, 130);
+        ctx.fillStyle = '#A0A0A0';
+        ctx.font = '24px Roboto';
+        ctx.fillText('NIVEL', 240, 145);
         
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 48px sans-serif';
-        ctx.fillText(`${userData.level}`, 360, 132);
+        ctx.fillStyle = '#9d4edd'; // Texto de nivel destacado
+        ctx.font = 'bold 48px Roboto';
+        ctx.fillText(`${userData.level}`, 315, 148);
 
-        // Barra de progreso XP (Fondo)
-        const barX = 280;
-        const barY = 170;
-        const barWidth = 470;
-        const barHeight = 40;
+        // Barra de progreso XP (Fondo oscuro redondeado)
+        const barX = 240;
+        const barY = 175;
+        const barWidth = 510;
+        const barHeight = 30;
+        const barRadius = 15;
 
-        ctx.fillStyle = '#E0E0E0';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barWidth, barHeight, barRadius);
+        ctx.fill();
 
-        // Barra de progreso XP (Lleno)
-        // Calculamos XP base del nivel actual y XP para el siguiente nivel
-        // Nivel = 0.1 * sqrt(XP) => XP = (Nivel / 0.1)^2
+        // Barra de progreso XP (Lleno degradado)
         const currentLevelXP = Math.pow(userData.level / 0.1, 2);
         const nextLevelXP = Math.pow((userData.level + 1) / 0.1, 2);
         const xpNeeded = nextLevelXP - currentLevelXP;
         const xpGainedInLevel = userData.xp - currentLevelXP;
 
-        const progressPercent = Math.min(Math.max(xpGainedInLevel / xpNeeded, 0), 1);
-        
-        ctx.fillStyle = '#FF0055'; // Rosa brutalista
-        ctx.fillRect(barX, barY, barWidth * progressPercent, barHeight);
-        ctx.strokeRect(barX, barY, barWidth * progressPercent, barHeight);
+        let progressPercent = Math.min(Math.max(xpGainedInLevel / xpNeeded, 0), 1);
+        if (progressPercent < 0.05) progressPercent = 0.05; // Mínimo visible
 
-        // Texto de XP en la barra
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText(`${Math.floor(userData.xp)} / ${Math.floor(nextLevelXP)} XP`, barX + 15, barY + 28);
+        const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+        gradient.addColorStop(0, '#5a189a');
+        gradient.addColorStop(1, '#c77dff');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barWidth * progressPercent, barHeight, barRadius);
+        ctx.fill();
+
+        // Texto de XP en la barra (flotante a la derecha)
+        ctx.fillStyle = '#E0E0E0';
+        ctx.font = '18px Roboto';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${Math.floor(userData.xp)} / ${Math.floor(nextLevelXP)} XP`, barX + barWidth - 15, barY - 12);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'rank.png' });
 
