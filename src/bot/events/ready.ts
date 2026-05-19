@@ -7,12 +7,11 @@ export default {
     execute(client: CustomClient) {
         console.log(`Ready! Logged in as ${client.user?.tag}`);
         
-        // Configura el Rich Presence / Estado personalizado
+        // Configura el Rich Presence como actividad "Jugando"
         client.user?.setPresence({
             activities: [{
-                name: 'customstatus',
-                type: ActivityType.Custom,
-                state: 'Moderando el servidor de Daki'
+                name: 'moderando el servidor de Daki',
+                type: ActivityType.Playing
             }],
             status: 'online'
         });
