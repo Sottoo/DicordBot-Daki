@@ -23,19 +23,31 @@ export interface UserXP {
 }
 
 let db: Record<string, UserXP> = {};
+let levelRoles: Record<string, string> = {}; // { "5": "role_id" }
 
 // Cargar la base de datos a la memoria RAM al iniciar
 export function loadDB() {
     if (fs.existsSync(dbPath)) {
         try {
             const data = fs.readFileSync(dbPath, 'utf8');
-            db = JSON.parse(data);
+            const parsed = JSON.parse(data);
+            
+            // Retrocompatibilidad con la primera versión
+            if (parsed.users) {
+                db = parsed.users;
+                levelRoles = parsed.roles || {};
+            } else {
+                db = parsed;
+                levelRoles = {};
+            }
         } catch (error) {
             console.error("Error leyendo xp.json", error);
             db = {};
+            levelRoles = {};
         }
     } else {
         db = {};
+        levelRoles = {};
         saveDB();
     }
 }
@@ -43,10 +55,24 @@ export function loadDB() {
 // Guardar la base de datos de RAM al archivo JSON
 export function saveDB() {
     try {
-        fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+        const dataToSave = {
+            users: db,
+            roles: levelRoles
+        };
+        fs.writeFileSync(dbPath, JSON.stringify(dataToSave, null, 2));
     } catch (error) {
         console.error("Error escribiendo xp.json", error);
     }
+}
+
+// Obtener y Configurar Roles de Nivel
+export function getLevelRoles(): Record<string, string> {
+    return levelRoles;
+}
+
+export function setLevelRole(level: number, roleId: string) {
+    levelRoles[level.toString()] = roleId;
+    saveDB();
 }
 
 // Obtener la info de un usuario
@@ -87,8 +113,15 @@ export function getLeaderboard(limit: number = 10): { userId: string, xp: number
 }
 
 // Importar DB desde un archivo externo (Para migraciones)
-export function importDB(newData: Record<string, UserXP>) {
-    db = newData;
+export function importDB(newData: { users?: Record<string, UserXP>, roles?: Record<string, string> } | Record<string, UserXP>) {
+    // Compatibilidad con la versión anterior que solo tenía usuarios
+    if (newData.users) {
+        db = newData.users as Record<string, UserXP>;
+        levelRoles = (newData.roles as Record<string, string>) || {};
+    } else {
+        db = newData as Record<string, UserXP>;
+        levelRoles = {};
+    }
     saveDB();
 }
 

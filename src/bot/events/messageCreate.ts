@@ -1,7 +1,7 @@
 import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
 import { GoogleGenAI } from '@google/genai';
-import { addXP } from '../utils/db.js';
+import { addXP, getLevelRoles } from '../utils/db.js';
 
 const xpCooldowns = new Set<string>();
 
@@ -109,9 +109,24 @@ export default {
             const { hasLeveledUp, newLevel } = addXP(message.author.id, xpGained);
 
             if (hasLeveledUp) {
+                let description = `🎉 **¡NUEVO NIVEL!**\nOye <@${message.author.id}>, acabas de subir al **Nivel ${newLevel}**. ¡Estás on fire! 🔥`;
+
+                // Verificar si hay una recompensa de rol para este nivel
+                const roles = getLevelRoles();
+                const roleIdForLevel = roles[newLevel.toString()];
+
+                if (roleIdForLevel && message.member) {
+                    try {
+                        await message.member.roles.add(roleIdForLevel);
+                        description += `\n\n🏅 **¡Recompensa Desbloqueada!** Te he asignado el rol <@&${roleIdForLevel}>.`;
+                    } catch (error) {
+                        console.error('Error al asignar el rol de recompensa:', error);
+                    }
+                }
+
                 const levelUpEmbed = new EmbedBuilder()
                     .setColor('#CCFF00')
-                    .setDescription(`🎉 **¡NUEVO NIVEL!**\nOye <@${message.author.id}>, acabas de subir al **Nivel ${newLevel}**. ¡Estás on fire! 🔥`);
+                    .setDescription(description);
                 
                 if (message.channel.isTextBased() && 'send' in message.channel) {
                     await (message.channel as any).send({ embeds: [levelUpEmbed] }).catch(() => {});
