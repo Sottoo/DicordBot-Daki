@@ -13,25 +13,34 @@ export default {
     async execute(interaction: ChatInputCommandInteraction) {
         const rolAcceso = interaction.options.getRole('rol_acceso', true);
 
-        // Diseñamos el Embed de Reglas (Estilo Neo-Brutalista)
+        // Diseñamos el Embed de Reglas (Estilo Neo-Brutalista Premium)
         const reglasEmbed = new EmbedBuilder()
             .setColor('#CCFF00') // Color vibrante neo-brutalista
-            .setTitle('⚠️ REGLAS DEL SERVIDOR DE DAKI')
+            .setAuthor({ 
+                name: 'COMUNIDAD OFICIAL DE DAKI', 
+                iconURL: interaction.guild?.iconURL() || interaction.client.user?.displayAvatarURL() 
+            })
+            .setTitle('⚠️ REGLAS Y NORMAS DEL SERVIDOR ⚠️')
             .setDescription(
-                '**¡Bienvenido a la comunidad!**\n' +
-                'Para poder ver los demás canales y chatear, debes leer y aceptar estas reglas básicas:\n\n' +
-                '**1.** No hacer spam, mandar links maliciosos o promocionar sin permiso.\n' +
-                '**2.** Tratar a todos con respeto (¡pero aguantar la carrilla!).\n' +
-                '**3.** No enviar contenido NSFW, gore o +18 (es ban instantáneo).\n' +
-                '**4.** Usa el sentido común y pásala bien.\n\n' +
-                'Si rompes alguna regla, Daki Bot te silenciará o te dará ban automático.\n\n' +
-                '👉 **Haz clic en el botón de abajo para confirmar que leíste y aceptas las reglas.**'
+                'Bienvenido/a al cuartel general. Para mantener el servidor como un lugar entretenido, seguro y con buena vibra para los streams, es estrictamente necesario seguir estas reglas:\n\n' +
+                '**1️⃣ ┃ Respeto y Convivencia**\n' +
+                '> Puedes bromear y tirar carrilla sana, pero el respeto es fundamental. Cero tolerancia al racismo, homofobia, acoso o toxicidad extrema.\n\n' +
+                '**2️⃣ ┃ Cero Spam / Auto-promoción**\n' +
+                '> Está prohibido promocionar tus directos, redes sociales o servidores de Discord sin autorización previa. El flood o spam repetitivo será sancionado.\n\n' +
+                '**3️⃣ ┃ Contenido Apropiado (SFW)**\n' +
+                '> Totalmente prohibido el contenido NSFW (+18), material gráfico (gore) o cualquier enlace dudoso que viole las normas de Discord.\n\n' +
+                '**4️⃣ ┃ Menciones y Pings (No molestar)**\n' +
+                '> Evita etiquetar (@ping) a Daki o al equipo de Moderación de manera innecesaria. No exijas saludos ni hagas spam cuando el canal esté activo o en directo.\n\n' +
+                '**5️⃣ ┃ Privacidad y Sentido Común**\n' +
+                '> Está estrictamente prohibido compartir información personal, fotos de otros usuarios sin permiso o hacer "doxxeo". Usa tu sentido común.\n\n' +
+                '---\n' +
+                '🛡️ *El equipo de moderación se reserva el derecho de silenciar o banear a cualquier usuario que rompa la armonía del servidor.*\n\n' +
+                '👇 **Haz clic en el botón verde para confirmar tu lectura, aceptar las reglas y desbloquear los canales.**'
             )
             .setFooter({ 
-                text: 'Daki Stream Community', 
+                text: 'Daki Stream Community • Sistema de Verificación', 
                 iconURL: interaction.client.user?.displayAvatarURL() 
-            })
-            .setTimestamp();
+            });
 
         // Creamos el botón interactivo y guardamos la ID del rol en el customId
         // Así el bot sabrá qué rol dar sin necesidad de guardarlo en una base de datos.
