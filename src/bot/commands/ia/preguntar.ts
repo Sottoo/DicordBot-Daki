@@ -70,11 +70,18 @@ export default {
                 await interaction.editReply({ content: answer });
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error al consultar Gemini API:', error);
-            await interaction.editReply({ 
-                content: '❌ Lo siento, hubo un problema al conectar con mis circuitos cerebrales de IA. Por favor, vuelve a intentarlo más tarde.' 
-            });
+            
+            if (error?.status === 429) {
+                await interaction.editReply({
+                    content: '⏳ ¡Tranquilos! Me están haciendo demasiadas preguntas muy rápido. Denme unos 40 segundos para procesar todo.'
+                });
+            } else {
+                await interaction.editReply({ 
+                    content: '❌ Ugh, mis circuitos se cruzaron. Hubo un problema de conexión con mi cerebro de IA. Inténtalo más tarde.' 
+                });
+            }
         }
     }
 };

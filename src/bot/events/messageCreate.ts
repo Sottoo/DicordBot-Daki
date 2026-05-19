@@ -177,8 +177,11 @@ export default {
                 } else {
                     await message.reply(answer);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error en chat de IA de Daki:', error);
+                if (error?.status === 429) {
+                    await message.reply('⏳ ¡Tranquilos, banda! Me están bombardeando con mensajes muy rápido. Denme unos 40 segunditos para recuperarme.');
+                }
             }
         }
     }
