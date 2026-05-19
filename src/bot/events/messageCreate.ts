@@ -151,7 +151,6 @@ export default {
                     config: {
                         systemInstruction: systemInstruction,
                         temperature: 0.7,
-                        maxOutputTokens: 300,
                     }
                 });
 
