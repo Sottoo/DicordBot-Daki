@@ -95,34 +95,45 @@ export default {
         const barX = 230;
         const barY = 175;
         const barWidth = 520;
-        const barHeight = 24;
-        const barRadius = 12;
+        const barHeight = 28; // Un poco más gruesa
+        const barRadius = 14;
 
-        ctx.fillStyle = '#252525';
+        ctx.fillStyle = '#222222';
         ctx.beginPath();
         ctx.roundRect(barX, barY, barWidth, barHeight, barRadius);
         ctx.fill();
 
         // Barra de progreso XP (Lleno)
-        // OJO: Actualizado a la nueva fórmula más difícil (0.07 en lugar de 0.1)
         const currentLevelXP = Math.pow(userData.level / 0.07, 2);
         const nextLevelXP = Math.pow((userData.level + 1) / 0.07, 2);
         const xpNeeded = nextLevelXP - currentLevelXP;
         const xpGainedInLevel = userData.xp - currentLevelXP;
 
         let progressPercent = Math.min(Math.max(xpGainedInLevel / xpNeeded, 0), 1);
-        if (progressPercent < 0.05 && progressPercent > 0) progressPercent = 0.05;
+        if (progressPercent < 0.04 && progressPercent > 0) progressPercent = 0.04; // Min width to be visible
 
         if (progressPercent > 0) {
-            ctx.fillStyle = '#3B82F6'; // Azul sólido
+            // Un degradado súper vibrante que da mucha satisfacción visual
+            const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+            gradient.addColorStop(0, '#00d2ff'); // Cyan brillante
+            gradient.addColorStop(1, '#3a7bd5'); // Azul profundo
+
+            // Agregamos un leve resplandor (Glow) a la barra llena para que resalte
+            ctx.shadowColor = '#00d2ff';
+            ctx.shadowBlur = 15;
+            
+            ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.roundRect(barX, barY, barWidth * progressPercent, barHeight, barRadius);
             ctx.fill();
+
+            // Reseteamos las sombras para que no afecten al texto
+            ctx.shadowBlur = 0;
         }
 
         // Texto de XP en la barra (flotante a la derecha y arriba de la barra)
-        ctx.fillStyle = '#888888';
-        ctx.font = '16px Roboto';
+        ctx.fillStyle = '#AAAAAA';
+        ctx.font = 'bold 18px Roboto';
         ctx.textAlign = 'right';
         ctx.fillText(`${Math.floor(userData.xp)} / ${Math.floor(nextLevelXP)} XP`, barX + barWidth, barY - 10);
 
