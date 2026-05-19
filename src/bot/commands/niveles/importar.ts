@@ -28,13 +28,13 @@ export default {
             const data = await response.json();
 
             // Verificación básica para asegurar que tiene el formato correcto
-            if (typeof data !== 'object' || Array.isArray(data)) {
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
                 await interaction.editReply('❌ El formato del archivo no es válido.');
                 return;
             }
 
             // Importamos los datos a nuestra BD en memoria y guardamos
-            importDB(data);
+            importDB(data as Record<string, any>);
 
             await interaction.editReply('✅ **¡Base de datos restaurada con éxito!**\nLos niveles y XP han vuelto a su estado anterior.');
             
