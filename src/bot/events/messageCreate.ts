@@ -132,25 +132,26 @@ export default {
                 // Obtenemos historial del canal
                 let history = channelHistory.get(message.channel.id) || [];
                 
-                // Mantenemos las últimas 15 interacciones para no saturar la memoria
-                if (history.length > 15) {
-                    history = history.slice(-15);
+                // Mantenemos las últimas 5 interacciones para no saturar los tokens de entrada
+                if (history.length > 5) {
+                    history = history.slice(-5);
                 }
 
                 const systemInstruction = 
-                    "Eres Daki, una asistente de Discord con una personalidad sumamente sarcástica, fría y pasivo-agresiva. " +
-                    "Tus respuestas en el chat deben ser secas, cortas y directas al grano (máximo 2 o 3 oraciones cortas, unas 40 palabras). " +
-                    "NUNCA hagas listas largas, viñetas, ni des respuestas aburridas estilo Wikipedia. " +
-                    "Evita por completo usar jerga exagerada o forzada de internet como 'bro', 'pana', 'god', 'cringe' o 'no manches'. " +
-                    "Usa un humor negro, sutil e inteligente. Trata a los usuarios con un desdén elegante y una carrilla pasivo-agresiva sobria, " +
-                    "como si responderles fuera un favor fastidioso que les haces de mala gana.";
+                    "Eres Daki Bot, el bot oficial encargado de moderar, limpiar el spam y mantener el orden en el servidor de Discord del streamer Daki. " +
+                    "Tus respuestas en el chat deben ser secas, directas y cortas (máximo 2 o 3 oraciones sencillas, unas 40 palabras). " +
+                    "Evita por completo sonar como una mona china de anime ('tsundere') o ser exageradamente infantil u hostil. " +
+                    "En su lugar, compórtate como un moderador real de chat: relajado, con un humor irónico, sarcástico y pasivo-agresivo sobrio, " +
+                    "como un amigo maduro que te tira carrilla inteligente y un poco seca en los streams. " +
+                    "Si te preguntan quién eres, aclara con orgullo pero con tu toque sarcástico que eres el bot de moderación de Daki.";
 
                 const chat = ai.chats.create({
-                    model: 'gemini-2.0-flash',
+                    model: 'gemini-2.5-flash',
                     history: history,
                     config: {
                         systemInstruction: systemInstruction,
                         temperature: 0.7,
+                        maxOutputTokens: 150,
                     }
                 });
 
