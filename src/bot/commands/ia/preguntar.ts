@@ -53,16 +53,19 @@ export default {
 
             const answer = response.text || 'No pude generar una respuesta en este momento. Inténtalo de nuevo.';
 
-            // Formateamos el mensaje para que se vea como una conversación natural (citas de Discord)
-            const formattedReply = `> **${interaction.user.username}:** *${pregunta}*\n\n${answer}`;
+            // Diseño simple pero profesional: Un Embed minimalista que se fusiona con Discord
+            const embed = new EmbedBuilder()
+                .setColor('#2B2D31') // Color oscuro nativo de Discord para un look limpio y sin bordes llamativos
+                .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
+                .setDescription(`**${pregunta}**\n\n${answer}`);
 
-            // Responder al usuario directamente como un mensaje de texto normal
-            if (formattedReply.length > 2000) {
+            if (answer.length > 2000) {
+                // Si por alguna razón es muy larga, enviamos texto plano dividido
                 const chunks = [];
-                for (let i = 0; i < formattedReply.length; i += 1900) {
-                    chunks.push(formattedReply.substring(i, i + 1900));
+                const plainText = `**${interaction.user.username} preguntó:** ${pregunta}\n\n${answer}`;
+                for (let i = 0; i < plainText.length; i += 1900) {
+                    chunks.push(plainText.substring(i, i + 1900));
                 }
-
                 await interaction.editReply(chunks[0]);
                 for (let i = 1; i < chunks.length; i++) {
                     if (interaction.channel && 'send' in interaction.channel) {
@@ -70,7 +73,7 @@ export default {
                     }
                 }
             } else {
-                await interaction.editReply({ content: formattedReply });
+                await interaction.editReply({ embeds: [embed] });
             }
 
         } catch (error) {
