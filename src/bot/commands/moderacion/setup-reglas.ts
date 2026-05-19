@@ -16,13 +16,13 @@ export default {
         // Diseñamos el Embed de Reglas (Estilo Neo-Brutalista Premium)
         const reglasEmbed = new EmbedBuilder()
             .setColor('#CCFF00') // Color vibrante neo-brutalista
-            .setAuthor({ 
-                name: 'COMUNIDAD OFICIAL DE DAKI', 
-                iconURL: interaction.guild?.iconURL() || interaction.client.user?.displayAvatarURL() 
+            .setAuthor({
+                name: 'COMUNIDAD OFICIAL DE DAKI',
+                iconURL: interaction.guild?.iconURL() || interaction.client.user?.displayAvatarURL()
             })
             .setTitle('⚠️ REGLAS Y NORMAS DEL SERVIDOR ⚠️')
             .setDescription(
-                'Bienvenido/a al cuartel general. Para mantener el servidor como un lugar entretenido, seguro y con buena vibra para los streams, es estrictamente necesario seguir estas reglas:\n\n' +
+                'Bienvenido/a a la Dakisa. Para mantener el servidor como un lugar entretenido, seguro y con buena vibra para los streams, es estrictamente necesario seguir estas reglas:\n\n' +
                 '**1️⃣ ┃ Respeto y Convivencia**\n' +
                 '> Puedes bromear y tirar carrilla sana, pero el respeto es fundamental. Cero tolerancia al racismo, homofobia, acoso o toxicidad extrema.\n\n' +
                 '**2️⃣ ┃ Cero Spam / Auto-promoción**\n' +
@@ -37,9 +37,9 @@ export default {
                 '🛡️ *El equipo de moderación se reserva el derecho de silenciar o banear a cualquier usuario que rompa la armonía del servidor.*\n\n' +
                 '👇 **Haz clic en el botón verde para confirmar tu lectura, aceptar las reglas y desbloquear los canales.**'
             )
-            .setFooter({ 
-                text: 'Daki Stream Community • Sistema de Verificación', 
-                iconURL: interaction.client.user?.displayAvatarURL() 
+            .setFooter({
+                text: 'Daki Stream Community • Sistema de Verificación',
+                iconURL: interaction.client.user?.displayAvatarURL()
             });
 
         // Creamos el botón interactivo y guardamos la ID del rol en el customId
@@ -53,16 +53,16 @@ export default {
             );
 
         // Respondemos en privado para confirmar que se creó el panel
-        await interaction.reply({ 
-            content: 'Panel de reglas creado exitosamente.', 
-            ephemeral: true 
+        await interaction.reply({
+            content: 'Panel de reglas creado exitosamente.',
+            ephemeral: true
         });
 
         // Enviamos el panel público al canal
         if (interaction.channel && 'send' in interaction.channel) {
-            await interaction.channel.send({ 
-                embeds: [reglasEmbed], 
-                components: [row] 
+            await interaction.channel.send({
+                embeds: [reglasEmbed],
+                components: [row]
             });
         }
     }
