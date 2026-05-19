@@ -1,6 +1,9 @@
 import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
 import { GoogleGenAI } from '@google/genai';
+import { addXP } from '../utils/db.js';
+
+const xpCooldowns = new Set<string>();
 
 interface ChatMessage {
     role: 'user' | 'model';
@@ -98,6 +101,27 @@ export default {
                     return;
                 }
             }
+        }
+
+        // 2.5 SISTEMA DE EXPERIENCIA (XP)
+        if (!xpCooldowns.has(message.author.id)) {
+            const xpGained = Math.floor(Math.random() * 11) + 15; // 15 a 25 XP por mensaje
+            const { hasLeveledUp, newLevel } = addXP(message.author.id, xpGained);
+
+            if (hasLeveledUp) {
+                const levelUpEmbed = new EmbedBuilder()
+                    .setColor('#CCFF00')
+                    .setDescription(`🎉 **¡NUEVO NIVEL!**\nOye <@${message.author.id}>, acabas de subir al **Nivel ${newLevel}**. ¡Estás on fire! 🔥`);
+                
+                if (message.channel.isTextBased() && 'send' in message.channel) {
+                    await (message.channel as any).send({ embeds: [levelUpEmbed] }).catch(() => {});
+                }
+            }
+
+            xpCooldowns.add(message.author.id);
+            setTimeout(() => {
+                xpCooldowns.delete(message.author.id);
+            }, 60000); // 1 minuto de cooldown para evitar farm de XP
         }
 
         // 3. MÓDULO DE INTELIGENCIA ARTIFICIAL (GEMINI CHAT)
