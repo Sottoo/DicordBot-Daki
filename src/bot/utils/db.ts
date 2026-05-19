@@ -63,8 +63,8 @@ export function addXP(userId: string, xpToAdd: number): { hasLeveledUp: boolean,
     user.xp += xpToAdd;
     user.messages += 1;
 
-    // Fórmula de niveles: Nivel = 0.1 * sqrt(XP)
-    const newLevel = Math.floor(0.1 * Math.sqrt(user.xp));
+    // Fórmula de niveles más difícil: Nivel = 0.07 * sqrt(XP)
+    const newLevel = Math.floor(0.07 * Math.sqrt(user.xp));
     let hasLeveledUp = false;
 
     if (newLevel > user.level) {

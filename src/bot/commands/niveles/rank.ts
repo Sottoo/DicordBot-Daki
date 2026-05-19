@@ -23,12 +23,12 @@ export default {
         const targetUser = interaction.options.getUser('usuario') || interaction.user;
         const userData = getUser(targetUser.id);
 
-        // --- CÓDIGO DE CANVAS PARA TARJETA PROFESIONAL/GAMING ---
+        // --- CÓDIGO DE CANVAS PARA TARJETA MINIMALISTA Y PROFESIONAL ---
         const canvas = createCanvas(800, 250);
         const ctx = canvas.getContext('2d');
 
         // Borde redondeado de toda la tarjeta
-        const radius = 25;
+        const radius = 20;
         ctx.beginPath();
         ctx.moveTo(radius, 0);
         ctx.lineTo(canvas.width - radius, 0);
@@ -42,24 +42,18 @@ export default {
         ctx.closePath();
         ctx.clip();
 
-        // Fondo: Imagen premium cargada desde assets
-        try {
-            const bgImage = await loadImage(path.join(process.cwd(), 'src/assets/images/rank_bg.png'));
-            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-        } catch (e) {
-            // Fallback si por alguna razón no carga la imagen
-            ctx.fillStyle = '#111214';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        // Capa de oscurecimiento (Glassmorphism oscuro)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        // Fondo: Color sólido oscuro minimalista (Matte Black / Gris Carbón)
+        ctx.fillStyle = '#121212';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Acento sutil en la parte superior (Línea delgada color azul/cyan profesional)
+        ctx.fillStyle = '#3B82F6'; // Azul moderno
+        ctx.fillRect(0, 0, canvas.width, 6);
+
         // Avatar
-        const avatarSize = 150;
+        const avatarSize = 140;
         const avatarX = 50;
-        const avatarY = 50;
+        const avatarY = 55;
         
         ctx.save();
         ctx.beginPath();
@@ -71,66 +65,66 @@ export default {
             const avatar = await loadImage(targetUser.displayAvatarURL({ extension: 'png', size: 256 }));
             ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
         } catch (e) {
-            ctx.fillStyle = '#333333';
+            ctx.fillStyle = '#2A2A2A';
             ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
         }
         ctx.restore();
 
-        // Aro de color alrededor del avatar (Glow púrpura/neón)
+        // Aro sutil alrededor del avatar
         ctx.beginPath();
-        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 3, 0, Math.PI * 2, true);
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = '#9d4edd'; // Púrpura gaming
+        ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2, true);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#2A2A2A'; 
         ctx.stroke();
 
         // Textos (Usando la fuente Roboto local para evitar cuadrados)
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 38px Roboto';
-        ctx.fillText(targetUser.username, 240, 95);
+        ctx.font = 'bold 36px Roboto';
+        ctx.fillText(targetUser.username, 230, 100);
 
-        ctx.fillStyle = '#A0A0A0';
-        ctx.font = '24px Roboto';
-        ctx.fillText('NIVEL', 240, 145);
+        // Texto de nivel
+        ctx.fillStyle = '#888888';
+        ctx.font = '22px Roboto';
+        ctx.fillText('NIVEL', 230, 145);
         
-        ctx.fillStyle = '#9d4edd'; // Texto de nivel destacado
-        ctx.font = 'bold 48px Roboto';
-        ctx.fillText(`${userData.level}`, 315, 148);
+        ctx.fillStyle = '#3B82F6'; // Mismo azul del acento superior
+        ctx.font = 'bold 44px Roboto';
+        ctx.fillText(`${userData.level}`, 300, 147);
 
-        // Barra de progreso XP (Fondo oscuro redondeado)
-        const barX = 240;
+        // Barra de progreso XP (Fondo oscuro minimalista)
+        const barX = 230;
         const barY = 175;
-        const barWidth = 510;
-        const barHeight = 30;
-        const barRadius = 15;
+        const barWidth = 520;
+        const barHeight = 24;
+        const barRadius = 12;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = '#252525';
         ctx.beginPath();
         ctx.roundRect(barX, barY, barWidth, barHeight, barRadius);
         ctx.fill();
 
-        // Barra de progreso XP (Lleno degradado)
-        const currentLevelXP = Math.pow(userData.level / 0.1, 2);
-        const nextLevelXP = Math.pow((userData.level + 1) / 0.1, 2);
+        // Barra de progreso XP (Lleno)
+        // OJO: Actualizado a la nueva fórmula más difícil (0.07 en lugar de 0.1)
+        const currentLevelXP = Math.pow(userData.level / 0.07, 2);
+        const nextLevelXP = Math.pow((userData.level + 1) / 0.07, 2);
         const xpNeeded = nextLevelXP - currentLevelXP;
         const xpGainedInLevel = userData.xp - currentLevelXP;
 
         let progressPercent = Math.min(Math.max(xpGainedInLevel / xpNeeded, 0), 1);
-        if (progressPercent < 0.05) progressPercent = 0.05; // Mínimo visible
+        if (progressPercent < 0.05 && progressPercent > 0) progressPercent = 0.05;
 
-        const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
-        gradient.addColorStop(0, '#5a189a');
-        gradient.addColorStop(1, '#c77dff');
+        if (progressPercent > 0) {
+            ctx.fillStyle = '#3B82F6'; // Azul sólido
+            ctx.beginPath();
+            ctx.roundRect(barX, barY, barWidth * progressPercent, barHeight, barRadius);
+            ctx.fill();
+        }
 
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.roundRect(barX, barY, barWidth * progressPercent, barHeight, barRadius);
-        ctx.fill();
-
-        // Texto de XP en la barra (flotante a la derecha)
-        ctx.fillStyle = '#E0E0E0';
-        ctx.font = '18px Roboto';
+        // Texto de XP en la barra (flotante a la derecha y arriba de la barra)
+        ctx.fillStyle = '#888888';
+        ctx.font = '16px Roboto';
         ctx.textAlign = 'right';
-        ctx.fillText(`${Math.floor(userData.xp)} / ${Math.floor(nextLevelXP)} XP`, barX + barWidth - 15, barY - 12);
+        ctx.fillText(`${Math.floor(userData.xp)} / ${Math.floor(nextLevelXP)} XP`, barX + barWidth, barY - 10);
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'rank.png' });
 
