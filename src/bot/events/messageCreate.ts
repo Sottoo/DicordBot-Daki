@@ -185,7 +185,7 @@ export default {
                     "Si te preguntan quién eres, aclara con orgullo pero con tu toque sarcástico que eres el bot de moderación de Daki.";
 
                 const chat = ai.chats.create({
-                    model: 'gemini-2.5-flash',
+                    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash-8b',
                     history: history,
                     config: {
                         systemInstruction: systemInstruction,

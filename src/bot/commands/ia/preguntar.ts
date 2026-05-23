@@ -43,7 +43,7 @@ export default {
                 "Si te piden comparar o elegir entre dos cosas, sé tajante, toma partido de inmediato y bromea inteligentemente sobre la otra opción.";
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: process.env.GEMINI_MODEL || 'gemini-1.5-flash-8b',
                 contents: pregunta,
                 config: {
                     systemInstruction: systemInstruction,
