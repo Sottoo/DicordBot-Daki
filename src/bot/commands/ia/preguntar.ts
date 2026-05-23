@@ -48,6 +48,9 @@ export default {
                 config: {
                     systemInstruction: systemInstruction,
                     temperature: 0.7,
+                    thinkingConfig: {
+                        thinkingLevel: process.env.GEMINI_THINKING_LEVEL || 'minimal'
+                    }
                 }
             });
 
