@@ -1,6 +1,6 @@
 import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { addXP, getLevelRoles } from '../utils/db.js';
 
 const xpCooldowns = new Set<string>();
@@ -191,7 +191,10 @@ export default {
                         systemInstruction: systemInstruction,
                         temperature: 0.7,
                         thinkingConfig: {
-                            thinkingLevel: process.env.GEMINI_THINKING_LEVEL || 'minimal'
+                            thinkingLevel: (process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'LOW' ? ThinkingLevel.LOW :
+                                            process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'MEDIUM' ? ThinkingLevel.MEDIUM :
+                                            process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'HIGH' ? ThinkingLevel.HIGH :
+                                            ThinkingLevel.MINIMAL)
                         }
                     }
                 });

@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 export default {
     data: new SlashCommandBuilder()
@@ -49,7 +49,10 @@ export default {
                     systemInstruction: systemInstruction,
                     temperature: 0.7,
                     thinkingConfig: {
-                        thinkingLevel: process.env.GEMINI_THINKING_LEVEL || 'minimal'
+                        thinkingLevel: (process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'LOW' ? ThinkingLevel.LOW :
+                                        process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'MEDIUM' ? ThinkingLevel.MEDIUM :
+                                        process.env.GEMINI_THINKING_LEVEL?.toUpperCase() === 'HIGH' ? ThinkingLevel.HIGH :
+                                        ThinkingLevel.MINIMAL)
                     }
                 }
             });
