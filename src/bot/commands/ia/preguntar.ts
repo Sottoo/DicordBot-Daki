@@ -17,8 +17,8 @@ export default {
             const noKeyEmbed = new EmbedBuilder()
                 .setColor('#FF5555')
                 .setTitle('⚠️ Configuración Incompleta')
-                .setDescription('El módulo de Inteligencia Artificial no está configurado.\nEl administrador del bot debe agregar la variable de entorno `GEMINI_API_KEY` con una clave válida de Google AI Studio.')
-                .setFooter({ text: 'Daki Bot IA' });
+                .setDescription('El módulo de Inteligencia Artificial no está configurado.\nEl administrador del bot debe configurarlo correctamente.')
+                .setFooter({ text: 'Daki Bot' });
 
             await interaction.reply({ embeds: [noKeyEmbed], flags: MessageFlags.Ephemeral });
             return;
@@ -80,16 +80,10 @@ export default {
             }
 
         } catch (error: any) {
-            console.error('Error al consultar Gemini API:', error);
-            if (error?.status === 429) {
-                await interaction.editReply({
-                    content: '⏳ ¡Paciencia, banda! Llegamos al límite de mensajes gratuitos por minuto. Denme unos segundos para respirar.'
-                });
-            } else {
-                await interaction.editReply({
-                    content: '❌ Lo siento, hubo un problema al conectar con mis circuitos cerebrales de IA. Por favor, vuelve a intentarlo más tarde.'
-                });
-            }
+            console.error('Error al consultar la IA:', error);
+            await interaction.editReply({
+                content: '⏳ Estoy teniendo problemas para procesar. Dame 1 minuto.'
+            });
         }
     }
 };
