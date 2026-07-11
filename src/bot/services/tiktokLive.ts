@@ -1,4 +1,4 @@
-import { Client, EmbedBuilder, TextChannel } from 'discord.js';
+import { Client, EmbedBuilder, TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { TikTokLiveConnection } from 'tiktok-live-connector';
 
 // --- Configuración (con valores por defecto, sobreescribibles por variables de entorno) ---
@@ -21,10 +21,31 @@ export const TIKTOK_USERNAME = USERNAME;
 export function buildLiveEmbed(): EmbedBuilder {
     return new EmbedBuilder()
         .setColor('#FE2C55') // Rojo/rosa de TikTok
-        .setTitle('🔴 ¡Daki está EN DIRECTO en TikTok!')
-        .setDescription(`**Daki** acaba de empezar un directo. ¡Éntrale antes de que se llene! 👇\n\n${LIVE_URL}`)
-        .setFooter({ text: 'Aviso de directo · Daki Bot' })
+        .setAuthor({ name: 'TikTok · EN DIRECTO' })
+        .setTitle('🔴 ¡Daki está EN DIRECTO!')
+        .setURL(LIVE_URL)
+        .setDescription(
+            '**Daki** acaba de arrancar un stream en TikTok. 🎥\n' +
+            '¡Éntrale ahora antes de que se llene el directo!'
+        )
+        .addFields(
+            { name: '📺 Plataforma', value: 'TikTok LIVE', inline: true },
+            { name: '👤 Canal', value: `[@${USERNAME}](${LIVE_URL})`, inline: true },
+            { name: '​', value: '¡No te lo pierdas! 🔥' },
+        )
+        .setFooter({ text: 'Daki Bot · Avisos de directo' })
         .setTimestamp();
+}
+
+// Botón clicable "Ver directo" que lleva al stream de TikTok.
+export function buildLiveComponents(): ActionRowBuilder<ButtonBuilder>[] {
+    const boton = new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setLabel('Ver directo ahora')
+        .setEmoji('🔴')
+        .setURL(LIVE_URL);
+
+    return [new ActionRowBuilder<ButtonBuilder>().addComponents(boton)];
 }
 
 let wasLive = false;
@@ -64,11 +85,10 @@ async function announce(client: Client): Promise<void> {
             return;
         }
 
-        const embed = buildLiveEmbed();
-
         await (channel as TextChannel).send({
-            content: MENTION ? `${MENTION} 🎥` : undefined,
-            embeds: [embed],
+            content: MENTION ? `${MENTION} 🔴 **¡Daki está en directo en TikTok!**` : undefined,
+            embeds: [buildLiveEmbed()],
+            components: buildLiveComponents(),
             // Nos aseguramos de que @everyone haga ping (requiere permiso "Mencionar a todos").
             allowedMentions: { parse: MENTION === '@everyone' ? ['everyone'] : MENTION.startsWith('<@&') ? ['roles'] : [] },
         });
