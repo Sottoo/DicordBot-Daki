@@ -1,5 +1,5 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } from 'discord.js';
-import { getDBPath } from '../../utils/db.js';
+import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, MessageFlags } from 'discord.js';
+import { getDBPath, flushDB } from '../../utils/db.js';
 import fs from 'fs';
 
 export default {
@@ -9,7 +9,11 @@ export default {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        // Volcamos a disco cualquier cambio pendiente en memoria (debounce)
+        // para que el backup contenga los datos más recientes y no un JSON parcial.
+        await flushDB();
 
         const dbPath = getDBPath();
 

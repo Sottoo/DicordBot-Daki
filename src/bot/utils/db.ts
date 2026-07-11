@@ -1,7 +1,8 @@
 import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 
-// En Railway, usaremos el Volumen montado en /app/data. 
+// En Railway, usaremos el Volumen montado en /app/data.
 // En tu PC local, creará una carpeta "data" en la raíz del proyecto.
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
 const dataDir = isProduction ? '/app/data' : path.join(process.cwd(), 'data');
@@ -15,6 +16,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const dbPath = path.join(dataDir, 'xp.json');
+const tmpPath = dbPath + '.tmp';
 
 export interface UserXP {
     xp: number;
@@ -25,13 +27,69 @@ export interface UserXP {
 let db: Record<string, UserXP> = {};
 let levelRoles: Record<string, string> = {}; // { "5": "role_id" }
 
+// --- Motor de guardado asíncrono, atómico y con debounce ---
+// En lugar de reescribir el JSON completo de forma síncrona en cada mensaje
+// (lo cual bloquea el event loop y arriesga corrupción), agrupamos los cambios
+// y escribimos como máximo una vez cada SAVE_DEBOUNCE_MS, de forma atómica.
+const SAVE_DEBOUNCE_MS = 5000;
+let saveTimer: NodeJS.Timeout | null = null;
+let writing = false;      // hay una escritura en curso
+let pendingWrite = false; // llegó otra petición mientras escribíamos
+
+function serialize(): string {
+    return JSON.stringify({ users: db, roles: levelRoles }, null, 2);
+}
+
+// Escritura atómica: escribimos en un archivo temporal y luego lo renombramos.
+// El rename es atómico en el mismo sistema de archivos, así que nunca queda
+// un xp.json a medio escribir aunque el proceso muera a mitad.
+async function writeToDisk(): Promise<void> {
+    if (writing) {
+        pendingWrite = true;
+        return;
+    }
+    writing = true;
+    try {
+        do {
+            pendingWrite = false;
+            const data = serialize();
+            await fsp.writeFile(tmpPath, data, 'utf8');
+            await fsp.rename(tmpPath, dbPath);
+        } while (pendingWrite); // si algo cambió durante la escritura, repetimos
+    } catch (error) {
+        console.error('Error escribiendo xp.json', error);
+    } finally {
+        writing = false;
+    }
+}
+
+// Programa un guardado con debounce (no bloquea, no espera).
+export function saveDB() {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        void writeToDisk();
+    }, SAVE_DEBOUNCE_MS);
+}
+
+// Fuerza un guardado inmediato y espera a que termine.
+// Úsalo antes de leer el archivo del disco (/backup), tras una restauración
+// (/importar) y al apagar el proceso, para no perder cambios pendientes.
+export async function flushDB(): Promise<void> {
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+    await writeToDisk();
+}
+
 // Cargar la base de datos a la memoria RAM al iniciar
 export function loadDB() {
     if (fs.existsSync(dbPath)) {
         try {
             const data = fs.readFileSync(dbPath, 'utf8');
             const parsed = JSON.parse(data);
-            
+
             // Retrocompatibilidad con la primera versión
             if (parsed.users) {
                 db = parsed.users;
@@ -49,19 +107,6 @@ export function loadDB() {
         db = {};
         levelRoles = {};
         saveDB();
-    }
-}
-
-// Guardar la base de datos de RAM al archivo JSON
-export function saveDB() {
-    try {
-        const dataToSave = {
-            users: db,
-            roles: levelRoles
-        };
-        fs.writeFileSync(dbPath, JSON.stringify(dataToSave, null, 2));
-    } catch (error) {
-        console.error("Error escribiendo xp.json", error);
     }
 }
 
@@ -98,7 +143,7 @@ export function addXP(userId: string, xpToAdd: number): { hasLeveledUp: boolean,
         hasLeveledUp = true;
     }
 
-    // Guardamos después de cada cambio (al ser un JSON ligero, no afecta el rendimiento)
+    // Programamos el guardado (con debounce). No bloquea el event loop.
     saveDB();
 
     return { hasLeveledUp, newLevel };
@@ -129,6 +174,25 @@ export function importDB(newData: { users?: Record<string, UserXP>, roles?: Reco
 export function getDBPath() {
     return dbPath;
 }
+
+// Aseguramos que los cambios pendientes se persistan al apagar el proceso.
+// Railway envía SIGTERM en cada redeploy; sin esto se perdería la ventana
+// de debounce (hasta 5s de XP).
+let shutdownHandled = false;
+async function handleShutdown(signal: string) {
+    if (shutdownHandled) return;
+    shutdownHandled = true;
+    console.log(`Recibido ${signal}, guardando base de datos antes de salir...`);
+    try {
+        await flushDB();
+    } catch (error) {
+        console.error('Error al guardar durante el apagado:', error);
+    } finally {
+        process.exit(0);
+    }
+}
+process.once('SIGTERM', () => void handleShutdown('SIGTERM'));
+process.once('SIGINT', () => void handleShutdown('SIGINT'));
 
 // Inicializar al cargar el archivo
 loadDB();

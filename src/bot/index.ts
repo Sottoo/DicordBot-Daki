@@ -18,8 +18,20 @@ export async function startBot() {
         GatewayIntentBits.GuildMembers, // ← Necesario para detectar nuevos miembros (bienvenida)
     ];
 
-    if (process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true') {
+    const messageContentEnabled = process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true';
+    if (messageContentEnabled) {
         intents.push(GatewayIntentBits.MessageContent);
+    } else {
+        // El intent MessageContent es privilegiado. Sin él, message.content llega
+        // vacío y anti-links, anti-spam y el chat de IA dejan de funcionar en
+        // silencio. Avisamos para que no parezca un bug fantasma.
+        console.warn(
+            '\n⚠️  ADVERTENCIA: El intent MessageContent está DESACTIVADO.\n' +
+            '   Sin él, el anti-links, el anti-spam y el chat de IA por mención NO funcionarán\n' +
+            '   (message.content llegará vacío). Para activarlo:\n' +
+            '   1) En el Portal de Desarrolladores de Discord → tu app → Bot → activa "Message Content Intent".\n' +
+            '   2) Define la variable de entorno ENABLE_MESSAGE_CONTENT_INTENT=true.\n'
+        );
     }
 
     const client = new CustomClient({

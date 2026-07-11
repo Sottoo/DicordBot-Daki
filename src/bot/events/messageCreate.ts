@@ -15,6 +15,30 @@ const userMessages = new Map<string, { count: number; timer: NodeJS.Timeout }>()
 const LIMIT = 5; // messages
 const TIME = 5000; // 5 seconds
 
+// Cliente de IA reutilizado (antes se instanciaba uno nuevo en cada mensaje).
+let aiClient: GoogleGenAI | null = null;
+function getAiClient(apiKey: string): GoogleGenAI {
+    if (!aiClient) aiClient = new GoogleGenAI({ apiKey });
+    return aiClient;
+}
+
+// Candado por canal: serializa las peticiones de IA de un mismo canal para que
+// el ciclo leer-historial → responder → guardar-historial sea atómico y dos
+// mensajes simultáneos no se pisen ("el último gana").
+const channelLocks = new Map<string, Promise<unknown>>();
+function withChannelLock<T>(channelId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = channelLocks.get(channelId) ?? Promise.resolve();
+    const next = prev.then(fn, fn); // se ejecuta pase lo que pase con el anterior
+    channelLocks.set(channelId, next.catch(() => {}));
+    return next;
+}
+
+// La clave combina servidor + usuario para no mezclar datos entre servidores
+// distintos si el bot llegara a estar en más de uno.
+function memberKey(message: Message): string {
+    return `${message.guildId ?? 'dm'}:${message.author.id}`;
+}
+
 export default {
     name: Events.MessageCreate,
     async execute(message: Message, client: CustomClient) {
@@ -72,13 +96,14 @@ export default {
         }
 
         // 2. ANTI-SPAM
-        if (!userMessages.has(message.author.id)) {
-            userMessages.set(message.author.id, { 
-                count: 1, 
-                timer: setTimeout(() => userMessages.delete(message.author.id), TIME) 
+        const spamKey = memberKey(message);
+        if (!userMessages.has(spamKey)) {
+            userMessages.set(spamKey, {
+                count: 1,
+                timer: setTimeout(() => userMessages.delete(spamKey), TIME)
             });
         } else {
-            const userData = userMessages.get(message.author.id);
+            const userData = userMessages.get(spamKey);
             if (userData) {
                 userData.count++;
                 if (userData.count > LIMIT) {
@@ -104,7 +129,8 @@ export default {
         }
 
         // 2.5 SISTEMA DE EXPERIENCIA (XP)
-        if (!xpCooldowns.has(message.author.id)) {
+        const xpKey = memberKey(message);
+        if (!xpCooldowns.has(xpKey)) {
             const xpGained = Math.floor(Math.random() * 11) + 15; // 15 a 25 XP por mensaje
             const { hasLeveledUp, newLevel } = addXP(message.author.id, xpGained);
 
@@ -133,9 +159,9 @@ export default {
                 }
             }
 
-            xpCooldowns.add(message.author.id);
+            xpCooldowns.add(xpKey);
             setTimeout(() => {
-                xpCooldowns.delete(message.author.id);
+                xpCooldowns.delete(xpKey);
             }, 60000); // 1 minuto de cooldown para evitar farm de XP
         }
 
@@ -143,14 +169,18 @@ export default {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return;
 
-        const isMentioned = message.mentions.has(client.user!) && !message.mentions.everyone;
+        // ignoreRoles evita que una mención de rol que contenga al bot dispare la IA.
+        const isMentioned = message.mentions.has(client.user!, { ignoreRoles: true, ignoreEveryone: true });
         const isAiChannel = 'name' in message.channel && typeof (message.channel as any).name === 'string' && (
-            (message.channel as any).name.includes('habla-con-daki') || 
+            (message.channel as any).name.includes('habla-con-daki') ||
             (message.channel as any).name.includes('daki-ia')
         );
 
         if (isMentioned || isAiChannel) {
-            try {
+            const channelId = message.channel.id;
+            // Serializamos por canal para evitar la condición de carrera en el historial.
+            await withChannelLock(channelId, async () => {
+              try {
                 // Indicamos que Daki está escribiendo
                 if (message.channel.isTextBased() && 'sendTyping' in message.channel) {
                     await (message.channel as any).sendTyping();
@@ -160,23 +190,27 @@ export default {
                 const cleanContent = message.content.replace(botMentionRegex, '').trim();
 
                 if (!cleanContent && isMentioned) {
-                    await message.reply('¡Hola! 💫 ¿En qué te puedo ayudar hoy? Escríbeme tu duda o consulta.');
+                    await message.reply('¡Hola! 💫 ¿En qué te puedo ayudar hoy? Escríbeme tu duda o consulta.').catch(() => null);
                     return;
                 }
 
                 if (!cleanContent) return;
 
-                const ai = new GoogleGenAI({ apiKey });
-                
+                const ai = getAiClient(apiKey);
+
                 // Obtenemos historial del canal
-                let history = channelHistory.get(message.channel.id) || [];
-                
-                // Mantenemos las últimas 5 interacciones para no saturar los tokens de entrada
-                if (history.length > 5) {
-                    history = history.slice(-5);
+                let history = channelHistory.get(channelId) || [];
+
+                // Mantenemos las últimas interacciones para no saturar los tokens de entrada.
+                if (history.length > 6) {
+                    history = history.slice(-6);
+                }
+                // Gemini exige que el historial empiece con un turno de 'user'.
+                while (history.length && history[0].role !== 'user') {
+                    history.shift();
                 }
 
-                const systemInstruction = 
+                const systemInstruction =
                     "Eres Daki Bot, el bot oficial encargado de moderar, limpiar el spam y mantener el orden en el servidor de Discord del streamer Daki. " +
                     "Tus respuestas en el chat deben ser secas, directas y cortas (máximo 2 o 3 oraciones sencillas, unas 40 palabras). " +
                     "Evita por completo sonar como una mona china de anime ('tsundere') o ser exageradamente infantil u hostil. " +
@@ -204,7 +238,7 @@ export default {
 
                 // Guardamos el historial actualizado
                 const updatedHistory = await chat.getHistory();
-                channelHistory.set(message.channel.id, updatedHistory as ChatMessage[]);
+                channelHistory.set(channelId, updatedHistory as ChatMessage[]);
 
                 // Respondemos al usuario dividiendo el mensaje si es necesario
                 if (answer.length > 2000) {
@@ -212,20 +246,22 @@ export default {
                     for (let i = 0; i < answer.length; i += 1900) {
                         chunks.push(answer.substring(i, i + 1900));
                     }
-                    
-                    await message.reply(chunks[0]);
+
+                    await message.reply(chunks[0]).catch(() => null);
                     for (let i = 1; i < chunks.length; i++) {
                         if ('send' in message.channel) {
-                            await (message.channel as any).send(chunks[i]);
+                            await (message.channel as any).send(chunks[i]).catch(() => null);
                         }
                     }
                 } else {
-                    await message.reply(answer);
+                    await message.reply(answer).catch(() => null);
                 }
-            } catch (error: any) {
+              } catch (error: any) {
                 console.error('Error en chat de IA de Daki:', error);
-                await message.reply('⏳ Estoy teniendo problemas para procesar. Dame 1 minuto.');
-            }
+                // El mensaje pudo haberse borrado (anti-link/anti-spam); protegemos el reply.
+                await message.reply('⏳ Estoy teniendo problemas para procesar. Dame 1 minuto.').catch(() => null);
+              }
+            });
         }
     }
 };

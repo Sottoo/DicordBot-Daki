@@ -1,11 +1,11 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, AttachmentBuilder } from 'discord.js';
 import { getUser } from '../../utils/db.js';
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import path from 'path';
+import { createCanvas, loadImage } from 'canvas';
+import { registerFonts } from '../../utils/fonts.js';
 
-// Registrar fuentes locales para evitar los cuadros (tofu blocks) en servidores Linux/Railway
-registerFont(path.join(process.cwd(), 'src/assets/fonts/Roboto-Bold.ttf'), { family: 'Roboto', weight: 'bold' });
-registerFont(path.join(process.cwd(), 'src/assets/fonts/Roboto-Regular.ttf'), { family: 'Roboto', weight: 'normal' });
+// Registrar fuentes locales para evitar los cuadros (tofu blocks) en Linux/Railway.
+// Es idempotente y a prueba de fallos (no tumba la carga del comando si falta el .ttf).
+registerFonts();
 
 export default {
     data: new SlashCommandBuilder()

@@ -1,5 +1,21 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { importDB } from '../../utils/db.js';
+import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
+import { importDB, flushDB, UserXP } from '../../utils/db.js';
+
+// Valida que un valor tenga la forma { xp, level, messages } con números finitos.
+function isValidUserXP(value: unknown): value is UserXP {
+    if (!value || typeof value !== 'object') return false;
+    const u = value as Record<string, unknown>;
+    return ['xp', 'level', 'messages'].every(
+        k => typeof u[k] === 'number' && Number.isFinite(u[k] as number)
+    );
+}
+
+// Comprueba que todos los usuarios de un objeto tengan un esquema válido.
+function validateUsers(users: unknown): { ok: boolean; count: number } {
+    if (!users || typeof users !== 'object' || Array.isArray(users)) return { ok: false, count: 0 };
+    const entries = Object.values(users as Record<string, unknown>);
+    return { ok: entries.every(isValidUserXP), count: entries.length };
+}
 
 export default {
     data: new SlashCommandBuilder()
@@ -13,7 +29,7 @@ export default {
         ),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const attachment = interaction.options.getAttachment('archivo', true);
 
@@ -33,10 +49,23 @@ export default {
                 return;
             }
 
-            // Importamos los datos a nuestra BD en memoria y guardamos
-            importDB(data as Record<string, any>);
+            // Validamos el esquema de los usuarios antes de sobrescribir la BD.
+            // Sin esto, valores no numéricos (p. ej. xp: "abc") corromperían la BD
+            // y romperían /rank y /leaderboard con NaN.
+            const usersToCheck = (data as any).users ?? data;
+            const { ok, count } = validateUsers(usersToCheck);
+            if (!ok) {
+                await interaction.editReply('❌ El archivo contiene datos de usuario inválidos (cada usuario debe tener `xp`, `level` y `messages` numéricos). No se ha modificado nada.');
+                return;
+            }
 
-            await interaction.editReply('✅ **¡Base de datos restaurada con éxito!**\nLos niveles y XP han vuelto a su estado anterior.');
+            // Importamos los datos a nuestra BD en memoria y forzamos el guardado
+            // a disco de inmediato (sin esperar al debounce) para que la
+            // restauración quede persistida aunque el proceso se reinicie enseguida.
+            importDB(data as Record<string, any>);
+            await flushDB();
+
+            await interaction.editReply(`✅ **¡Base de datos restaurada con éxito!**\nSe restauraron **${count}** usuarios. Los niveles y XP han vuelto a su estado anterior.`);
             
         } catch (error) {
             console.error('Error importando DB:', error);

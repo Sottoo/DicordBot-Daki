@@ -1,6 +1,13 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
+// Cliente de IA reutilizado entre invocaciones (antes se creaba uno por comando).
+let aiClient: GoogleGenAI | null = null;
+function getAiClient(apiKey: string): GoogleGenAI {
+    if (!aiClient) aiClient = new GoogleGenAI({ apiKey });
+    return aiClient;
+}
+
 export default {
     data: new SlashCommandBuilder()
         .setName('preguntar')
@@ -30,7 +37,7 @@ export default {
         await interaction.deferReply();
 
         try {
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = getAiClient(apiKey);
 
             // Instrucciones para personalidad realista: moderadora del servidor de Daki (el streamer), sarcástica y sobria
             const systemInstruction =

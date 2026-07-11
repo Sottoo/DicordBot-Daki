@@ -1,32 +1,17 @@
 import { AttachmentBuilder, Guild, User } from 'discord.js';
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import fs from 'fs';
-import path from 'path';
+import { createCanvas, loadImage } from 'canvas';
+import { registerFonts, WELCOME_FONT_FAMILY } from './fonts.js';
 
 export async function createWelcomeCard(guild: Guild, user: User, displayName: string) {
+    // Registro idempotente: solo hace trabajo la primera vez (antes se registraba
+    // la fuente en cada tarjeta generada).
+    registerFonts();
+
     const canvasW = 1000;
     const canvasH = 320;
     const canvas = createCanvas(canvasW, canvasH);
     const ctx = canvas.getContext('2d');
-    const fontFamily = 'DakiWelcome';
-
-    // Try to register a bundled font if present to avoid missing-glyph squares
-    try {
-        const candidates = [
-            path.resolve(process.cwd(), 'assets', 'fonts', 'NotoSans-Regular.ttf'),
-            path.resolve(process.cwd(), 'assets', 'fonts', 'Inter-Regular.ttf'),
-        ];
-        const fontPath = candidates.find(candidate => fs.existsSync(candidate));
-
-        if (fontPath) {
-            registerFont(fontPath, { family: fontFamily });
-            console.log(`[WELCOME] Registered font from ${fontPath} as ${fontFamily}`);
-        } else {
-            console.log(`[WELCOME] No bundled font found in ${candidates.join(', ')}`);
-        }
-    } catch (e) {
-        console.error('[WELCOME] Error checking/registering font', e);
-    }
+    const fontFamily = WELCOME_FONT_FAMILY;
 
     // 1. Solid Off-White Background
     ctx.fillStyle = '#F4F0EB';
