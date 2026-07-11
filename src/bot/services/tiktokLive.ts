@@ -13,7 +13,19 @@ const POLL_INTERVAL_MS = Math.max(60_000, Number(process.env.TIKTOK_POLL_INTERVA
 // genere un segundo aviso del mismo directo.
 const MIN_ANNOUNCE_GAP_MS = 30 * 60 * 1000; // 30 minutos
 
-const LIVE_URL = `https://www.tiktok.com/@${USERNAME}/live`;
+export const LIVE_URL = `https://www.tiktok.com/@${USERNAME}/live`;
+export const TIKTOK_USERNAME = USERNAME;
+
+// Construye el embed del aviso de directo. Se reutiliza tanto en el aviso real
+// como en el comando de prueba /testdirecto.
+export function buildLiveEmbed(): EmbedBuilder {
+    return new EmbedBuilder()
+        .setColor('#FE2C55') // Rojo/rosa de TikTok
+        .setTitle('🔴 ¡Daki está EN DIRECTO en TikTok!')
+        .setDescription(`**Daki** acaba de empezar un directo. ¡Éntrale antes de que se llene! 👇\n\n${LIVE_URL}`)
+        .setFooter({ text: 'Aviso de directo · Daki Bot' })
+        .setTimestamp();
+}
 
 let wasLive = false;
 let lastAnnouncedAt = 0;
@@ -52,12 +64,7 @@ async function announce(client: Client): Promise<void> {
             return;
         }
 
-        const embed = new EmbedBuilder()
-            .setColor('#FE2C55') // Rojo/rosa de TikTok
-            .setTitle('🔴 ¡Daki está EN DIRECTO en TikTok!')
-            .setDescription(`**Daki** acaba de empezar un directo. ¡Éntrale antes de que se llene! 👇\n\n${LIVE_URL}`)
-            .setFooter({ text: 'Aviso de directo · Daki Bot' })
-            .setTimestamp();
+        const embed = buildLiveEmbed();
 
         await (channel as TextChannel).send({
             content: MENTION ? `${MENTION} 🎥` : undefined,
