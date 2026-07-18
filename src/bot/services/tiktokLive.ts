@@ -16,10 +16,54 @@ const MIN_ANNOUNCE_GAP_MS = 30 * 60 * 1000; // 30 minutos
 export const LIVE_URL = `https://www.tiktok.com/@${USERNAME}/live`;
 export const TIKTOK_USERNAME = USERNAME;
 
+// Datos del directo que enriquecen el aviso (portada, título, etc.). Todos son
+// opcionales: si TikTok no los devuelve, el embed se construye igualmente.
+export interface LiveInfo {
+    title?: string;    // Título que el streamer puso al directo.
+    coverUrl?: string; // Portada/miniatura del directo (la "captura" que se ve grande).
+    avatarUrl?: string; // Avatar del streamer (miniatura arriba a la derecha).
+    viewers?: number;  // Espectadores viendo en este momento.
+}
+
+// Extrae la primera URL http válida de una imagen de TikTok ({ url_list: [...] }).
+function firstImageUrl(image: unknown): string | undefined {
+    const list = (image as { url_list?: unknown })?.url_list;
+    if (!Array.isArray(list)) return undefined;
+    return list.find((u): u is string => typeof u === 'string' && u.startsWith('http'));
+}
+
+/**
+ * Consulta a TikTok la información del room del streamer y devuelve los datos
+ * útiles para el aviso (portada, título, avatar, espectadores). Nunca lanza:
+ * ante cualquier fallo (red, rate-limit, formato inesperado) devuelve {} y el
+ * aviso se enviará sin imagen.
+ */
+export async function fetchLiveInfo(): Promise<LiveInfo> {
+    try {
+        const connection = new TikTokLiveConnection(USERNAME, {});
+        const info = await connection.fetchRoomInfo();
+        const data = (info?.data ?? {}) as Record<string, any>;
+
+        const title = typeof data.title === 'string' && data.title.trim() ? data.title.trim() : undefined;
+        const viewers = Number.isFinite(data.user_count) && data.user_count > 0 ? Number(data.user_count) : undefined;
+
+        return {
+            title,
+            coverUrl: firstImageUrl(data.cover),
+            avatarUrl: firstImageUrl(data.owner?.avatar_large) ?? firstImageUrl(data.owner?.avatar_thumb),
+            viewers,
+        };
+    } catch (error) {
+        console.warn(`[TIKTOK] No se pudo obtener la portada/info del directo de @${USERNAME}:`, (error as Error)?.message ?? error);
+        return {};
+    }
+}
+
 // Construye el embed del aviso de directo. Se reutiliza tanto en el aviso real
-// como en el comando de prueba /testdirecto.
-export function buildLiveEmbed(): EmbedBuilder {
-    return new EmbedBuilder()
+// como en el comando de prueba /testdirecto. Si se le pasa `info`, enriquece el
+// aviso con la portada del directo, su título y los espectadores actuales.
+export function buildLiveEmbed(info: LiveInfo = {}): EmbedBuilder {
+    const embed = new EmbedBuilder()
         .setColor('#FE2C55') // Rojo/rosa de TikTok
         .setAuthor({ name: 'TikTok · EN DIRECTO' })
         .setTitle('🔴 ¡Daki está EN DIRECTO!')
@@ -27,12 +71,31 @@ export function buildLiveEmbed(): EmbedBuilder {
         .setDescription(
             '**Daki** acaba de arrancar un stream en TikTok. 🎥\n' +
             '¡Éntrale ahora antes de que se llene el directo!'
-        )
-        .addFields(
-            { name: '📺 Plataforma', value: 'TikTok LIVE', inline: true },
-            { name: '👤 Canal', value: `[@${USERNAME}](${LIVE_URL})`, inline: true },
-            { name: '​', value: '¡No te lo pierdas! 🔥' },
-        )
+        );
+
+    // Título real del directo (si TikTok lo devuelve). Discord limita el valor
+    // de un campo a 1024 caracteres; recortamos por seguridad.
+    if (info.title) {
+        embed.addFields({ name: '🎬 Título del directo', value: info.title.slice(0, 256) });
+    }
+
+    embed.addFields(
+        { name: '📺 Plataforma', value: 'TikTok LIVE', inline: true },
+        { name: '👤 Canal', value: `[@${USERNAME}](${LIVE_URL})`, inline: true },
+    );
+
+    if (info.viewers) {
+        embed.addFields({ name: '👀 Viendo ahora', value: info.viewers.toLocaleString('es-MX'), inline: true });
+    }
+
+    embed.addFields({ name: '​', value: '¡No te lo pierdas! 🔥' });
+
+    // Avatar del streamer como miniatura (esquina superior derecha).
+    if (info.avatarUrl) embed.setThumbnail(info.avatarUrl);
+    // Portada/miniatura del directo como imagen grande: la "captura" del stream.
+    if (info.coverUrl) embed.setImage(info.coverUrl);
+
+    return embed
         .setFooter({ text: 'Daki Bot · Avisos de directo' })
         .setTimestamp();
 }
@@ -85,9 +148,13 @@ async function announce(client: Client): Promise<void> {
             return;
         }
 
+        // Intentamos enriquecer el aviso con la portada/título del directo. Si
+        // falla, fetchLiveInfo() devuelve {} y el aviso sale igual (sin imagen).
+        const info = await fetchLiveInfo();
+
         await (channel as TextChannel).send({
             content: MENTION ? `${MENTION} 🔴 **¡Daki está en directo en TikTok!**` : undefined,
-            embeds: [buildLiveEmbed()],
+            embeds: [buildLiveEmbed(info)],
             components: buildLiveComponents(),
             // Nos aseguramos de que @everyone haga ping (requiere permiso "Mencionar a todos").
             allowedMentions: { parse: MENTION === '@everyone' ? ['everyone'] : MENTION.startsWith('<@&') ? ['roles'] : [] },
