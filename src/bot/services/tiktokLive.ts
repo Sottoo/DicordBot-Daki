@@ -65,34 +65,30 @@ export async function fetchLiveInfo(): Promise<LiveInfo> {
 export function buildLiveEmbed(info: LiveInfo = {}): EmbedBuilder {
     const embed = new EmbedBuilder()
         .setColor('#FE2C55') // Rojo/rosa de TikTok
-        .setAuthor({ name: 'TikTok · EN DIRECTO' })
         .setTitle('🔴 ¡Daki está EN DIRECTO!')
-        .setURL(LIVE_URL)
-        .setDescription(
-            '**Daki** acaba de arrancar un stream en TikTok. 🎥\n' +
-            '¡Éntrale ahora antes de que se llene el directo!'
-        );
+        .setURL(LIVE_URL);
 
-    // Título real del directo (si TikTok lo devuelve). Discord limita el valor
-    // de un campo a 1024 caracteres; recortamos por seguridad.
-    if (info.title) {
-        embed.addFields({ name: '🎬 Título del directo', value: info.title.slice(0, 256) });
-    }
+    // Línea de autor: canal + plataforma juntos, con el avatar del streamer.
+    // Así evitamos campos sueltos de "Plataforma" y "Canal".
+    embed.setAuthor({
+        name: `@${USERNAME} · TikTok LIVE`,
+        url: LIVE_URL,
+        ...(info.avatarUrl ? { iconURL: info.avatarUrl } : {}),
+    });
 
-    embed.addFields(
-        { name: '📺 Plataforma', value: 'TikTok LIVE', inline: true },
-        { name: '👤 Canal', value: `[@${USERNAME}](${LIVE_URL})`, inline: true },
-    );
+    // Descripción compacta: el título real del directo como cita (si lo hay) y
+    // una sola llamada a la acción. El botón "Ver directo" ya invita a entrar.
+    const lineas: string[] = [];
+    if (info.title) lineas.push(`> *${info.title.slice(0, 200)}*`);
+    lineas.push('¡Éntrale ahora antes de que se llene el directo! 🔥');
+    embed.setDescription(lineas.join('\n\n'));
 
+    // Único dato numérico, y solo si aporta (evitamos "0 espectadores").
     if (info.viewers) {
         embed.addFields({ name: '👀 Viendo ahora', value: info.viewers.toLocaleString('es-MX'), inline: true });
     }
 
-    embed.addFields({ name: '​', value: '¡No te lo pierdas! 🔥' });
-
-    // Avatar del streamer como miniatura (esquina superior derecha).
-    if (info.avatarUrl) embed.setThumbnail(info.avatarUrl);
-    // Portada/miniatura del directo como imagen grande: la "captura" del stream.
+    // Portada del directo como imagen grande: la "captura" del stream, protagonista.
     if (info.coverUrl) embed.setImage(info.coverUrl);
 
     return embed
