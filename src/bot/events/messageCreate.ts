@@ -2,6 +2,8 @@ import { Events, Message, EmbedBuilder } from 'discord.js';
 import { CustomClient } from '../index.js';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { addXP, getLevelRoles } from '../utils/db.js';
+import { inspeccionar, sancionar } from '../services/antiRaid.js';
+import { registrar, etiquetaUsuario } from '../utils/modLog.js';
 
 const xpCooldowns = new Set<string>();
 
@@ -42,60 +44,21 @@ function memberKey(message: Message): string {
 export default {
     name: Events.MessageCreate,
     async execute(message: Message, client: CustomClient) {
-        if (message.author.bot) return;
+        // Los webhooks también pueden ser secuestrados, así que el guardián los
+        // revisa antes de descartar mensajes de bots.
+        if (message.author.bot && !message.webhookId) return;
 
-        // 1. ANTI-LINKS / ANTI-PROMO
-        if (message.member && !message.member.permissions.has('ManageMessages')) {
-            const content = message.content.toLowerCase();
-            
-            // 1.a. Enlaces permitidos por defecto (GIFs)
-            const isAllowed = /tenor\.com|giphy\.com/i.test(content);
-
-            if (!isAllowed) {
-                // 1.b. Promociones descaradas o Scams
-                const promoRegex = /(discord\.gg\/|discord\.com\/invite\/|t\.me\/|twitch\.tv\/|youtube\.com\/channel\/|free nitro|nitro gratis|steamcommunity\.com\/gift)/i;
-                // 1.c. Cualquier otro enlace general
-                const linkRegex = /https?:\/\/[^\s]+/i;
-
-                if (promoRegex.test(content)) {
-                    try {
-                        await message.delete();
-                        if (message.channel.isTextBased() && 'send' in message.channel) {
-                            const embed = new EmbedBuilder()
-                                .setColor('#FF0000') // Rojo intenso
-                                .setTitle('🚨 ¡ALERTA DE SEGURIDAD!')
-                                .setDescription(`**${message.author}** intentó enviar un enlace de promoción o posible estafa.\nEl usuario ha sido silenciado para proteger el servidor.`)
-                                .setFooter({ text: 'Sistema Anti-Raid Daki' });
-                            await message.channel.send({ embeds: [embed] });
-                        }
-                        // Mutear automáticamente por 10 minutos
-                        await message.member.timeout(10 * 60 * 1000, 'Promoción no autorizada o Scam');
-                    } catch (e) {
-                        console.error("Fallo al borrar promo o mutear:", e);
-                    }
-                    return;
-                } else if (linkRegex.test(content)) {
-                    try {
-                        await message.delete();
-                        if (message.channel.isTextBased() && 'send' in message.channel) {
-                            const embed = new EmbedBuilder()
-                                .setColor('#FFCC00')
-                                .setDescription(`⚠️ **¡Alto ahí, ${message.author}!**\nNo está permitido enviar enlaces externos en este servidor.`)
-                                .setFooter({ text: 'Sistema de Seguridad Daki' });
-                            
-                            const warningMsg = await message.channel.send({ embeds: [embed] });
-                            // Borrar la advertencia después de 8 segundos para no ensuciar el chat
-                            setTimeout(() => warningMsg.delete().catch(() => null), 8000);
-                        }
-                    } catch (e) {
-                        console.error("Fallo al borrar link general:", e);
-                    }
-                    return;
-                }
-            }
+        // 1. GUARDIÁN: anti-enlaces, anti-phishing y detector de raid.
+        // Va primero y es la única puerta: si actúa, el mensaje ya no existe.
+        try {
+            if (await inspeccionar(message)) return;
+        } catch (error) {
+            console.error('[GUARDIAN] Error inesperado inspeccionando el mensaje:', error);
         }
 
-        // 2. ANTI-SPAM
+        if (message.author.bot) return;
+
+        // 2. ANTI-SPAM (flood en un mismo canal, sin enlaces)
         const spamKey = memberKey(message);
         if (!userMessages.has(spamKey)) {
             userMessages.set(spamKey, {
@@ -106,22 +69,30 @@ export default {
             const userData = userMessages.get(spamKey);
             if (userData) {
                 userData.count++;
-                if (userData.count > LIMIT) {
-                    try {
-                        await message.delete();
-                        if (message.channel.isTextBased() && 'send' in message.channel) {
-                            const embed = new EmbedBuilder()
-                                .setColor('#FF3366')
-                                .setDescription(`🛑 **¡Oye, ${message.author}!**\nPor favor, deja de hacer spam. Has sido silenciado temporalmente.`)
-                                .setFooter({ text: 'Sistema de Seguridad Daki' });
-                            await message.channel.send({ embeds: [embed] });
-                        }
-                        
-                        if (message.member) {
-                            await message.member.timeout(60 * 1000, 'Spam'); // Mute for 1 minute
-                        }
-                    } catch (err) {
-                        console.log('Faltan permisos para mutear o borrar mensaje en anti-spam.');
+                if (userData.count > LIMIT && !message.member?.permissions.has('ManageGuild')) {
+                    await message.delete().catch(() => null);
+
+                    // Solo avisamos en el primer aviso del ciclo para no sumar ruido al flood.
+                    if (userData.count === LIMIT + 1 && message.channel.isTextBased() && 'send' in message.channel) {
+                        const embed = new EmbedBuilder()
+                            .setColor('#FF3366')
+                            .setDescription(`🛑 **¡Oye, ${message.author}!**\nDeja de hacer spam. Te silencio un momento.`)
+                            .setFooter({ text: 'Guardián de Daki' });
+                        const aviso = await (message.channel as any).send({ embeds: [embed] }).catch(() => null);
+                        if (aviso) setTimeout(() => aviso.delete().catch(() => null), 8000);
+                    }
+
+                    if (message.member && userData.count === LIMIT + 1) {
+                        const res = await sancionar(message.member, 'Spam (flood de mensajes)', 5 * 60_000);
+                        await registrar(message.guild, {
+                            gravedad: 'aviso',
+                            titulo: 'Spam bloqueado',
+                            descripcion: `**Usuario:** ${etiquetaUsuario(message.author.id, message.author.tag)}\n${userData.count} mensajes en ${TIME / 1000}s`,
+                            campos: [
+                                { name: 'Canal', value: `<#${message.channelId}>`, inline: true },
+                                { name: 'Sanción', value: res.aplicada === 'ninguna' ? `❌ ${res.error}` : `✅ ${res.aplicada}`, inline: true },
+                            ],
+                        });
                     }
                     return;
                 }

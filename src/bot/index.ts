@@ -1,4 +1,4 @@
-import { Client, Collection, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
 import loadEvents from './handlers/eventHandler.js';
 import loadCommands from './handlers/commandHandler.js';
 
@@ -11,37 +11,71 @@ export class CustomClient extends Client {
     }
 }
 
+/**
+ * Estado del intent MessageContent. /diagnostico lo lee para poder decir en
+ * claro si el bot está ciego (era la causa nº1 de "el bot no hizo nada").
+ */
+export const estadoIntents = {
+    messageContent: false,
+    motivoFallo: '' as string,
+};
+
 export async function startBot() {
-    const intents = [
+    const baseIntents = [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers, // ← Necesario para detectar nuevos miembros (bienvenida)
+        GatewayIntentBits.GuildMembers,   // bienvenidas y sanciones
+        GatewayIntentBits.GuildModeration, // registro de bans/timeouts
     ];
 
-    const messageContentEnabled = process.env.ENABLE_MESSAGE_CONTENT_INTENT === 'true';
-    if (messageContentEnabled) {
-        intents.push(GatewayIntentBits.MessageContent);
-    } else {
-        // El intent MessageContent es privilegiado. Sin él, message.content llega
-        // vacío y anti-links, anti-spam y el chat de IA dejan de funcionar en
-        // silencio. Avisamos para que no parezca un bug fantasma.
-        console.warn(
-            '\n⚠️  ADVERTENCIA: El intent MessageContent está DESACTIVADO.\n' +
-            '   Sin él, el anti-links, el anti-spam y el chat de IA por mención NO funcionarán\n' +
-            '   (message.content llegará vacío). Para activarlo:\n' +
-            '   1) En el Portal de Desarrolladores de Discord → tu app → Bot → activa "Message Content Intent".\n' +
-            '   2) Define la variable de entorno ENABLE_MESSAGE_CONTENT_INTENT=true.\n'
-        );
+    // MessageContent es OBLIGATORIO para moderar: sin él message.content llega
+    // vacío y el anti-enlaces no puede ver nada. Ahora va activado por defecto;
+    // solo se desactiva si alguien pone explícitamente 'false'.
+    const quiereContenido = process.env.ENABLE_MESSAGE_CONTENT_INTENT !== 'false';
+
+    const partials = [Partials.Message, Partials.Channel];
+
+    async function intentarLogin(conContenido: boolean) {
+        const intents = conContenido ? [...baseIntents, GatewayIntentBits.MessageContent] : [...baseIntents];
+        const client = new CustomClient({ intents, partials });
+        await loadEvents(client as any);
+        await loadCommands(client as any);
+        await client.login(process.env.DISCORD_TOKEN);
+        return client;
     }
 
-    const client = new CustomClient({
-        intents
-    });
+    if (!quiereContenido) {
+        console.warn(
+            '\n⚠️  ENABLE_MESSAGE_CONTENT_INTENT=false → el bot NO puede leer el texto de los mensajes.\n' +
+            '   El anti-enlaces, el anti-spam y el chat de IA quedan INÚTILES. Quita esa variable.\n'
+        );
+        estadoIntents.motivoFallo = 'Desactivado a mano con ENABLE_MESSAGE_CONTENT_INTENT=false';
+        return intentarLogin(false);
+    }
 
-    await loadEvents(client as any);
-    await loadCommands(client as any);
+    try {
+        const client = await intentarLogin(true);
+        estadoIntents.messageContent = true;
+        console.log('✅ Intent MessageContent ACTIVO: el guardián puede leer los mensajes.');
+        return client;
+    } catch (error: any) {
+        const esIntentNoPermitido = /disallowed intents/i.test(error?.message ?? '');
+        if (!esIntentNoPermitido) throw error;
 
-    await client.login(process.env.DISCORD_TOKEN);
-
-    return client;
+        // El intent no está habilitado en el Portal de Desarrolladores: Discord
+        // rechaza la conexión entera. Arrancamos sin él para no dejar el bot
+        // caído, pero gritamos el problema porque la moderación queda muerta.
+        estadoIntents.motivoFallo = 'El "Message Content Intent" NO está activado en el Portal de Desarrolladores de Discord';
+        console.error(
+            '\n🛑🛑🛑 ATENCIÓN: MODERACIÓN DESACTIVADA 🛑🛑🛑\n' +
+            '   Discord rechazó el intent MessageContent porque NO está habilitado en el portal.\n' +
+            '   Sin él el bot NO PUEDE VER el texto de los mensajes: cero anti-enlaces, cero anti-raid.\n' +
+            '   ARRÉGLALO ASÍ:\n' +
+            '     1) https://discord.com/developers/applications → tu app → Bot\n' +
+            '     2) Activa "MESSAGE CONTENT INTENT" (y "SERVER MEMBERS INTENT")\n' +
+            '     3) Reinicia el bot\n' +
+            '   Arrancando en modo degradado (solo comandos)...\n'
+        );
+        return intentarLogin(false);
+    }
 }

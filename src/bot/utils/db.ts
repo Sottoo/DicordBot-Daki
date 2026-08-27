@@ -5,7 +5,8 @@ import path from 'path';
 // En Railway, usaremos el Volumen montado en /app/data.
 // En tu PC local, creará una carpeta "data" en la raíz del proyecto.
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
-const dataDir = isProduction ? '/app/data' : path.join(process.cwd(), 'data');
+// Exportado para que otros módulos (guardConfig) guarden en el mismo volumen.
+export const dataDir = isProduction ? '/app/data' : path.join(process.cwd(), 'data');
 
 if (!fs.existsSync(dataDir)) {
     try {
