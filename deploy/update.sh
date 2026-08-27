@@ -9,6 +9,26 @@ set -euo pipefail
 PROYECTO="/home/ubuntu/daki-bot"
 cd "$PROYECTO"
 
+# systemd NO carga ~/.bashrc, que es donde nvm mete Node en el PATH. Sin esto,
+# el script falla con "npm: command not found" en cada despliegue. Deducimos la
+# ruta del enlace /usr/local/bin/node que ya usa el servicio del bot, para no
+# tener que codificar aqui la version de Node.
+if ! command -v npm >/dev/null 2>&1; then
+    if [ -L /usr/local/bin/node ]; then
+        PATH="$(dirname "$(readlink -f /usr/local/bin/node)"):$PATH"
+        export PATH
+    elif [ -s "$HOME/.nvm/nvm.sh" ]; then
+        # shellcheck source=/dev/null
+        . "$HOME/.nvm/nvm.sh"
+    fi
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+    echo "No encuentro npm. Comprueba que /usr/local/bin/node sea un enlace al node de nvm:"
+    echo "  sudo ln -sf \"\$(which node)\" /usr/local/bin/node"
+    exit 1
+fi
+
 git fetch --quiet origin main
 
 ACTUAL=$(git rev-parse HEAD)
