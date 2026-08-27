@@ -4,10 +4,19 @@
 #
 # Preguntamos a GitHub desde aqui en vez de que GitHub entre por SSH: asi no
 # hay que abrir ningun puerto ni guardar claves del servidor en el repositorio.
+#
+# Uso interno: --desde <commit> lo pasa el propio script al reejecutarse
+# despues de actualizarse a si mismo. No lo llames a mano.
 set -euo pipefail
 
 PROYECTO="/home/ubuntu/daki-bot"
 cd "$PROYECTO"
+
+# Commit previo al merge, cuando venimos de una reejecucion.
+BASE_PREVIA=""
+if [ "${1:-}" = "--desde" ] && [ -n "${2:-}" ]; then
+    BASE_PREVIA="$2"
+fi
 
 # systemd NO carga ~/.bashrc, que es donde nvm mete Node en el PATH. Sin esto,
 # el script falla con "npm: command not found" en cada despliegue. Deducimos la
@@ -34,24 +43,35 @@ git fetch --quiet origin main
 ACTUAL=$(git rev-parse HEAD)
 REMOTO=$(git rev-parse origin/main)
 
-if [ "$ACTUAL" = "$REMOTO" ]; then
-    exit 0   # nada nuevo, salimos en silencio para no llenar los logs
+# Si ya estamos al dia y nadie nos forzo, salimos en silencio para no llenar
+# los logs cada 5 minutos.
+if [ "$ACTUAL" = "$REMOTO" ] && [ -z "$BASE_PREVIA" ]; then
+    exit 0
 fi
 
-echo "Cambios detectados: ${ACTUAL:0:7} -> ${REMOTO:0:7}"
+# Punto de partida real del despliegue: al reejecutarnos, el merge ya se hizo.
+BASE="${BASE_PREVIA:-$ACTUAL}"
+
+if [ "$ACTUAL" != "$REMOTO" ]; then
+    echo "Cambios detectados: ${ACTUAL:0:7} -> ${REMOTO:0:7}"
+
+    # --ff-only: si alguien hizo commits sueltos en el servidor, preferimos
+    # fallar aqui a generar un merge silencioso que nadie revisara.
+    git merge --ff-only origin/main
+
+    # Si este mismo archivo venia en los cambios, lo que bash esta ejecutando ya
+    # es codigo obsoleto (y ademas lee el script por trozos, asi que seguir
+    # leyendo un archivo que cambio bajo sus pies es pedir problemas). Nos
+    # reejecutamos con la version nueva pasandole de donde veniamos.
+    if ! git diff --quiet "$ACTUAL" "$REMOTO" -- deploy/update.sh; then
+        echo "El script de despliegue se actualizo: reejecutando la version nueva."
+        exec "$PROYECTO/deploy/update.sh" --desde "$BASE"
+    fi
+fi
 
 # npm ci solo si cambiaron las dependencias: en 1 GB de RAM es de largo la
 # parte mas lenta (recompila canvas) y en la mayoria de despliegues no aporta.
-NECESITA_INSTALL=0
-if ! git diff --quiet "$ACTUAL" "$REMOTO" -- package.json package-lock.json; then
-    NECESITA_INSTALL=1
-fi
-
-# --ff-only: si alguien hizo commits sueltos en el servidor, preferimos fallar
-# aqui a generar un merge silencioso que nadie revisara.
-git merge --ff-only origin/main
-
-if [ "$NECESITA_INSTALL" = "1" ]; then
+if ! git diff --quiet "$BASE" "$REMOTO" -- package.json package-lock.json; then
     echo "Las dependencias cambiaron: reinstalando..."
     npm ci
 fi
@@ -60,8 +80,8 @@ fi
 # anterior ya cargada en memoria, que es preferible a dejarlo caido. Volvemos el
 # repositorio atras para que su estado coincida con lo que se esta ejecutando.
 if ! npm run build; then
-    echo "BUILD FALLIDO. El bot sigue con la version anterior; revirtiendo el repositorio."
-    git reset --hard "$ACTUAL"
+    echo "BUILD FALLIDO. El bot sigue con la version anterior; revirtiendo a ${BASE:0:7}."
+    git reset --hard "$BASE"
     exit 1
 fi
 
