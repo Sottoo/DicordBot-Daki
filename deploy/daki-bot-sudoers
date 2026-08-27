@@ -1,0 +1,7 @@
+# Permite al usuario ubuntu reiniciar SOLO el servicio del bot sin contrasena,
+# que es lo unico que necesita el despliegue automatico. Nada mas.
+#
+# Instalar validando la sintaxis (un sudoers roto te deja sin sudo):
+#   sudo install -m 440 deploy/daki-bot-sudoers /etc/sudoers.d/daki-bot
+#   sudo visudo -c
+ubuntu ALL=(root) NOPASSWD: /usr/bin/systemctl restart daki-bot

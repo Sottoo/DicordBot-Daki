@@ -1,0 +1,16 @@
+# Comprueba GitHub cada 5 minutos.
+[Unit]
+Description=Comprobar cambios de daki-bot cada 5 minutos
+
+[Timer]
+# Primera comprobacion 2 min despues de arrancar la maquina, para no competir
+# con el arranque del propio bot.
+OnBootSec=2min
+OnUnitActiveSec=5min
+# Reparte el momento exacto en una ventana de 30s: si algun dia hay mas de una
+# instancia, evita que todas consulten GitHub en el mismo instante.
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

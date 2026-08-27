@@ -1,0 +1,15 @@
+# Una sola pasada del script de actualizacion. Lo dispara el .timer, no se
+# habilita por si mismo.
+[Unit]
+Description=Comprobar y desplegar cambios de daki-bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/daki-bot
+ExecStart=/home/ubuntu/daki-bot/deploy/update.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=daki-bot-update

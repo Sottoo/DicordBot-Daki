@@ -1,0 +1,5 @@
+# Los scripts y las unidades de systemd DEBEN usar finales de linea LF.
+# Con CRLF, Linux lee el shebang como "/usr/bin/env bash\r" y falla con
+# "bad interpreter: ^M", un error que no dice en absoluto lo que pasa.
+*.sh text eol=lf
+deploy/* text eol=lf
