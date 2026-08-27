@@ -2,17 +2,30 @@ import fs from 'fs';
 import fsp from 'fs/promises';
 import path from 'path';
 
-// En Railway, usaremos el Volumen montado en /app/data.
-// En tu PC local, creará una carpeta "data" en la raíz del proyecto.
+// Dónde se guardan el XP y la configuración del guardián:
+//   - DATA_DIR (si está definida) manda siempre. Es lo que se usa en un
+//     servidor propio (AWS EC2, VPS...), donde no existe /app/data.
+//   - En Railway el volumen está montado en /app/data.
+//   - En tu PC local, una carpeta "data" en la raíz del proyecto.
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
-// Exportado para que otros módulos (guardConfig) guarden en el mismo volumen.
-export const dataDir = isProduction ? '/app/data' : path.join(process.cwd(), 'data');
+const rutaPorDefecto = isProduction ? '/app/data' : path.join(process.cwd(), 'data');
+// Exportado para que otros módulos (guardConfig) guarden en el mismo sitio.
+export const dataDir = process.env.DATA_DIR || rutaPorDefecto;
 
 if (!fs.existsSync(dataDir)) {
     try {
         fs.mkdirSync(dataDir, { recursive: true });
     } catch (error) {
-        console.error('No se pudo crear el directorio de datos:', error);
+        // Sin esta carpeta se pierden el XP y la config del guardián en cada
+        // reinicio, así que lo gritamos: fuera de Railway la causa casi siempre
+        // es que DATA_DIR no está definida y se intenta escribir en /app/data.
+        console.error(
+            `\n🛑 No se pudo crear el directorio de datos "${dataDir}".\n` +
+            '   El XP y la configuración del guardián NO se van a guardar.\n' +
+            '   Si no estás en Railway, define DATA_DIR con una ruta donde el bot\n' +
+            '   pueda escribir (por ejemplo DATA_DIR=/home/ubuntu/daki-bot/data).\n',
+            error
+        );
     }
 }
 

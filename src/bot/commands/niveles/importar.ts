@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { importDB, flushDB, UserXP } from '../../utils/db.js';
+import { esConfigGuardian, importConfig } from '../../utils/guardConfig.js';
 
 // Valida que un valor tenga la forma { xp, level, messages } con números finitos.
 function isValidUserXP(value: unknown): value is UserXP {
@@ -20,11 +21,11 @@ function validateUsers(users: unknown): { ok: boolean; count: number } {
 export default {
     data: new SlashCommandBuilder()
         .setName('importar')
-        .setDescription('Restaura la base de datos de Niveles subiendo un archivo de backup (Solo Admins).')
+        .setDescription('Restaura un backup de XP o de la configuración del guardián (Solo Admins).')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addAttachmentOption(option => 
             option.setName('archivo')
-                .setDescription('El archivo daki_xp_backup.json que generaste con /backup')
+                .setDescription('Un archivo generado con /backup (el de XP o el del guardián)')
                 .setRequired(true)
         ),
 
@@ -49,13 +50,29 @@ export default {
                 return;
             }
 
+            // Decidimos qué tipo de backup es por su contenido, no por el nombre:
+            // el usuario puede haber renombrado el archivo al guardarlo.
+            if (esConfigGuardian(data)) {
+                const { ok, error } = await importConfig(data);
+                if (!ok) {
+                    await interaction.editReply(`❌ ${error} No se ha modificado nada.`);
+                    return;
+                }
+                await interaction.editReply(
+                    '✅ **Configuración del guardián restaurada.**\n' +
+                    'Revísala ejecutando `/guardian` sin opciones. El cierre de emergencia (lockdown) queda **desactivado** ' +
+                    'a propósito: su respaldo de permisos ya no sirve para el estado actual del servidor.'
+                );
+                return;
+            }
+
             // Validamos el esquema de los usuarios antes de sobrescribir la BD.
             // Sin esto, valores no numéricos (p. ej. xp: "abc") corromperían la BD
             // y romperían /rank y /leaderboard con NaN.
             const usersToCheck = (data as any).users ?? data;
             const { ok, count } = validateUsers(usersToCheck);
             if (!ok) {
-                await interaction.editReply('❌ El archivo contiene datos de usuario inválidos (cada usuario debe tener `xp`, `level` y `messages` numéricos). No se ha modificado nada.');
+                await interaction.editReply('❌ El archivo no es ni un backup del guardián ni uno de XP válido (cada usuario debe tener `xp`, `level` y `messages` numéricos). No se ha modificado nada.');
                 return;
             }
 

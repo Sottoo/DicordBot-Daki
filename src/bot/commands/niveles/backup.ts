@@ -1,32 +1,51 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { getDBPath, flushDB } from '../../utils/db.js';
+import { getConfigPath, flushConfig } from '../../utils/guardConfig.js';
 import fs from 'fs';
 
 export default {
     data: new SlashCommandBuilder()
         .setName('backup')
-        .setDescription('Genera una copia de seguridad de la base de datos de Niveles y XP (Solo Admins).')
+        .setDescription('Genera una copia de seguridad del XP y de la configuración del guardián (Solo Admins).')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction: ChatInputCommandInteraction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        // Volcamos a disco cualquier cambio pendiente en memoria (debounce)
-        // para que el backup contenga los datos más recientes y no un JSON parcial.
-        await flushDB();
+        // Volcamos a disco los cambios pendientes en memoria (ambos archivos
+        // escriben con retardo) para que el backup no contenga una versión
+        // anterior ni un JSON a medio escribir.
+        await Promise.all([flushDB(), flushConfig()]);
 
-        const dbPath = getDBPath();
+        const rutaXP = getDBPath();
+        const rutaGuardian = getConfigPath();
 
-        if (!fs.existsSync(dbPath)) {
-            await interaction.editReply('❌ No se encontró ninguna base de datos activa todavía.');
+        const archivos: AttachmentBuilder[] = [];
+        const incluidos: string[] = [];
+
+        if (fs.existsSync(rutaXP)) {
+            archivos.push(new AttachmentBuilder(rutaXP, { name: 'daki_xp_backup.json' }));
+            incluidos.push('**XP y niveles** → `daki_xp_backup.json`');
+        }
+
+        if (fs.existsSync(rutaGuardian)) {
+            archivos.push(new AttachmentBuilder(rutaGuardian, { name: 'daki_guardian_backup.json' }));
+            incluidos.push('**Configuración del guardián** → `daki_guardian_backup.json`');
+        }
+
+        if (!archivos.length) {
+            await interaction.editReply('❌ No hay nada que respaldar todavía: no existe ni la base de datos de XP ni la configuración del guardián.');
             return;
         }
 
-        const attachment = new AttachmentBuilder(dbPath, { name: 'daki_xp_backup.json' });
-
         await interaction.editReply({
-            content: '✅ **Copia de seguridad generada.**\nAquí tienes el archivo con toda la experiencia y niveles del servidor. Guárdalo bien. Si alguna vez necesitas restaurarlo, usa el comando `/importar`.',
-            files: [attachment]
+            content:
+                '✅ **Copia de seguridad generada.**\n' +
+                incluidos.map(l => `• ${l}`).join('\n') +
+                '\n\nGuarda los dos archivos. Para restaurarlos, usa `/importar` con cada uno ' +
+                '(el comando reconoce solo por el contenido cuál es cuál).' +
+                (archivos.length === 1 ? '\n\n⚠️ Solo salió un archivo: el otro aún no existe en el disco.' : ''),
+            files: archivos,
         });
     }
 };

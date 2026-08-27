@@ -1,0 +1,43 @@
+# Servicio systemd para el bot en un servidor propio (AWS EC2, Lightsail, VPS...).
+# Sustituye a lo que Railway hacia solo: arrancar al encender y revivir tras un fallo.
+#
+# Instalacion:
+#   sudo cp deploy/daki-bot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now daki-bot
+#
+# Ver logs en vivo:  journalctl -u daki-bot -f
+
+[Unit]
+Description=Daki Bot (Discord + avisos de TikTok)
+# network-online evita que el bot intente conectar con Discord antes de que
+# haya red al arrancar la maquina.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/daki-bot
+
+# Toda la configuracion vive en el .env del proyecto (lo carga dotenv al
+# arrancar). No dupliques variables aqui para no tener dos fuentes de verdad.
+ExecStart=/usr/local/bin/node dist/server/server.js
+
+# Si el proceso muere (fallo de red, excepcion no capturada) systemd lo levanta.
+Restart=always
+RestartSec=10
+# Si se cae 5 veces en 5 minutos deja de intentarlo: es un fallo real de
+# configuracion, no un corte pasajero, y el bucle solo llenaria los logs.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=daki-bot
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
