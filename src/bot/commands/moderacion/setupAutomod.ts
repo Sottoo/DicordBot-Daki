@@ -53,6 +53,31 @@ const PALABRAS_ESTAFA = [
     '*crypto giveaway*', '*free airdrop*',
 ];
 
+/**
+ * Tipos de los que Discord solo admite UNA regla por servidor. Los de tipo
+ * Keyword no están aquí porque de esos caben 6.
+ */
+const TIPOS_UNICOS = new Set<number>([
+    AutoModerationRuleTriggerType.Spam,
+    AutoModerationRuleTriggerType.KeywordPreset,
+    AutoModerationRuleTriggerType.MentionSpam,
+]);
+
+/** Traduce los errores de AutoMod a algo que se pueda leer sin abrir la documentación. */
+function explicarError(e: any): string {
+    const msg: string = e?.message ?? String(e);
+    if (/MAX_RULES_OF_TYPE_EXCEEDED/i.test(msg)) {
+        return 'Ya existe otra regla de este tipo en el servidor y no pude adaptarla. Bórrala en Ajustes del servidor → AutoMod y vuelve a ejecutar el comando.';
+    }
+    if (/MAX_RULES/i.test(msg)) {
+        return 'Alcanzaste el límite de reglas de AutoMod de Discord. Borra alguna en Ajustes del servidor → AutoMod.';
+    }
+    if (/Missing Permissions|50013/i.test(msg)) {
+        return 'Me falta el permiso Gestionar servidor.';
+    }
+    return msg;
+}
+
 export default {
     data: new SlashCommandBuilder()
         .setName('setup-automod')
@@ -99,15 +124,20 @@ export default {
         if (canalAlertas) accionesBase.push({ type: AutoModerationActionType.SendAlertMessage, metadata: { channel: canalAlertas.id } });
 
         const creadas: string[] = [];
+        const adaptadas: string[] = [];
         const fallidas: string[] = [];
 
         // Borramos nuestras reglas anteriores para que el comando sea repetible
         // sin acumular duplicados (Discord solo permite 6 reglas de tipo Keyword).
+        // Las que NO son nuestras las guardamos: puede que ocupen un hueco único.
+        const ajenas: any[] = [];
         try {
             const existentes = await guild.autoModerationRules.fetch();
             for (const regla of existentes.values()) {
                 if (regla.name.startsWith('Daki')) {
                     await regla.delete('Recreando reglas con /setup-automod').catch(() => null);
+                } else {
+                    ajenas.push(regla);
                 }
             }
         } catch {
@@ -183,12 +213,34 @@ export default {
             });
         }
 
+        const motivo = `Configurado con /setup-automod por ${interaction.user.tag}`;
+
         for (const { nombre, opciones } of plan) {
             try {
-                await guild.autoModerationRules.create({ ...opciones, reason: `Configurado con /setup-automod por ${interaction.user.tag}` });
-                creadas.push(nombre);
+                // Discord admite UNA sola regla de los tipos Spam, KeywordPreset y
+                // MentionSpam por servidor. Si ya hay una (creada a mano o por los
+                // ajustes de AutoMod de Discord), crear otra falla con
+                // AUTO_MODERATION_MAX_RULES_OF_TYPE_EXCEEDED. En ese caso
+                // reaprovechamos la que ocupa el hueco en lugar de rendirnos.
+                const ocupante = TIPOS_UNICOS.has(opciones.triggerType)
+                    ? ajenas.find(r => r.triggerType === opciones.triggerType)
+                    : undefined;
+
+                if (ocupante) {
+                    const nombreAnterior = ocupante.name;
+                    // triggerType no se puede cambiar al editar, y no hace falta:
+                    // solo adaptamos reglas que ya son del mismo tipo.
+                    const { triggerType, ...cambios } = opciones;
+                    await ocupante.edit({ ...cambios, reason: motivo });
+                    // La sacamos de la lista para no reutilizarla dos veces.
+                    ajenas.splice(ajenas.indexOf(ocupante), 1);
+                    adaptadas.push(`${nombre} — reemplazó a «${nombreAnterior}»`);
+                } else {
+                    await guild.autoModerationRules.create({ ...opciones, reason: motivo });
+                    creadas.push(nombre);
+                }
             } catch (e: any) {
-                fallidas.push(`${nombre} → \`${e?.message ?? e}\``);
+                fallidas.push(`${nombre} → \`${explicarError(e)}\``);
             }
         }
 
@@ -206,6 +258,15 @@ export default {
                 { name: `✅ Reglas creadas (${creadas.length})`, value: creadas.map(c => `• ${c}`).join('\n') || '—', inline: false },
             )
             .setFooter({ text: 'Puedes verlas y ajustarlas en Ajustes del servidor → AutoMod' });
+
+        if (adaptadas.length) {
+            embed.addFields({
+                name: `♻️ Reglas adaptadas (${adaptadas.length})`,
+                value: adaptadas.map(a => `• ${a}`).join('\n').slice(0, 1024) +
+                    '\n\nDiscord solo permite una regla de estos tipos por servidor, así que reutilicé la que ya existía en vez de crear una nueva.',
+                inline: false,
+            });
+        }
 
         if (fallidas.length) {
             embed.addFields({ name: `❌ Fallidas (${fallidas.length})`, value: fallidas.join('\n').slice(0, 1024), inline: false });
