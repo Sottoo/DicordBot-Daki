@@ -67,7 +67,7 @@ const TIPOS_UNICOS = new Set<number>([
 function explicarError(e: any): string {
     const msg: string = e?.message ?? String(e);
     if (/MAX_RULES_OF_TYPE_EXCEEDED/i.test(msg)) {
-        return 'Ya existe otra regla de este tipo en el servidor y no pude adaptarla. Bórrala en Ajustes del servidor → AutoMod y vuelve a ejecutar el comando.';
+        return 'Discord solo admite una regla de este tipo y ya hay una que no pude editar (mira en Ajustes del servidor → AutoMod: puede ser una de Discord o una anterior del bot). Bórrala a mano y vuelve a ejecutar el comando.';
     }
     if (/MAX_RULES/i.test(msg)) {
         return 'Alcanzaste el límite de reglas de AutoMod de Discord. Borra alguna en Ajustes del servidor → AutoMod.';
@@ -129,15 +129,20 @@ export default {
 
         // Borramos nuestras reglas anteriores para que el comando sea repetible
         // sin acumular duplicados (Discord solo permite 6 reglas de tipo Keyword).
-        // Las que NO son nuestras las guardamos: puede que ocupen un hueco único.
-        const ajenas: any[] = [];
+        const reutilizables: any[] = [];
         try {
             const existentes = await guild.autoModerationRules.fetch();
             for (const regla of existentes.values()) {
+                // Las reglas de tipo único NUNCA se borran, ni siquiera las
+                // nuestras: liberar el hueco y volver a crearlo es una carrera
+                // que se pierde (Discord sigue viéndolo ocupado y responde
+                // MAX_RULES_OF_TYPE_EXCEEDED). Se editan en su sitio.
+                if (TIPOS_UNICOS.has(regla.triggerType)) {
+                    reutilizables.push(regla);
+                    continue;
+                }
                 if (regla.name.startsWith('Daki')) {
                     await regla.delete('Recreando reglas con /setup-automod').catch(() => null);
-                } else {
-                    ajenas.push(regla);
                 }
             }
         } catch {
@@ -223,7 +228,7 @@ export default {
                 // AUTO_MODERATION_MAX_RULES_OF_TYPE_EXCEEDED. En ese caso
                 // reaprovechamos la que ocupa el hueco en lugar de rendirnos.
                 const ocupante = TIPOS_UNICOS.has(opciones.triggerType)
-                    ? ajenas.find(r => r.triggerType === opciones.triggerType)
+                    ? reutilizables.find(r => r.triggerType === opciones.triggerType)
                     : undefined;
 
                 if (ocupante) {
@@ -233,8 +238,12 @@ export default {
                     const { triggerType, ...cambios } = opciones;
                     await ocupante.edit({ ...cambios, reason: motivo });
                     // La sacamos de la lista para no reutilizarla dos veces.
-                    ajenas.splice(ajenas.indexOf(ocupante), 1);
-                    adaptadas.push(`${nombre} — reemplazó a «${nombreAnterior}»`);
+                    reutilizables.splice(reutilizables.indexOf(ocupante), 1);
+                    adaptadas.push(
+                        nombreAnterior === nombre
+                            ? `${nombre} — actualizada en su sitio`
+                            : `${nombre} — reemplazó a «${nombreAnterior}»`
+                    );
                 } else {
                     await guild.autoModerationRules.create({ ...opciones, reason: motivo });
                     creadas.push(nombre);
